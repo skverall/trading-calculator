@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/trading-calculator/static/css/main.f9f99482.css",
-    "main.js": "/trading-calculator/static/js/main.83df5510.js",
+    "main.css": "/trading-calculator/static/css/main.34125b7b.css",
+    "main.js": "/trading-calculator/static/js/main.6bad3503.js",
     "static/js/453.7fbcd512.chunk.js": "/trading-calculator/static/js/453.7fbcd512.chunk.js",
     "index.html": "/trading-calculator/index.html",
-    "main.f9f99482.css.map": "/trading-calculator/static/css/main.f9f99482.css.map",
-    "main.83df5510.js.map": "/trading-calculator/static/js/main.83df5510.js.map",
+    "main.34125b7b.css.map": "/trading-calculator/static/css/main.34125b7b.css.map",
+    "main.6bad3503.js.map": "/trading-calculator/static/js/main.6bad3503.js.map",
     "453.7fbcd512.chunk.js.map": "/trading-calculator/static/js/453.7fbcd512.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.f9f99482.css",
-    "static/js/main.83df5510.js"
+    "static/css/main.34125b7b.css",
+    "static/js/main.6bad3503.js"
   ]
 }
