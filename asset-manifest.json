@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/trading-calculator/static/css/main.faa771b3.css",
+    "main.js": "/trading-calculator/static/js/main.b61ea531.js",
+    "static/js/453.7fbcd512.chunk.js": "/trading-calculator/static/js/453.7fbcd512.chunk.js",
+    "index.html": "/trading-calculator/index.html",
+    "main.faa771b3.css.map": "/trading-calculator/static/css/main.faa771b3.css.map",
+    "main.b61ea531.js.map": "/trading-calculator/static/js/main.b61ea531.js.map",
+    "453.7fbcd512.chunk.js.map": "/trading-calculator/static/js/453.7fbcd512.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.faa771b3.css",
+    "static/js/main.b61ea531.js"
+  ]
+}
