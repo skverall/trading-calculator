@@ -1,150 +1,546 @@
-/* Общие стили контейнера */
+/* Основные стили контейнера */
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #333;
 }
 
-/* Заголовок */
+/* Стили заголовка */
 .header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 2rem;
 }
 
 .title {
-  color: #333;
   font-size: 2rem;
-  margin-bottom: 10px;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
 }
 
 .subtitle {
+  font-size: 1.1rem;
   color: #666;
-  font-size: 1.2rem;
 }
 
-/* Карточки и сетки */
+/* Стили карточек */
 .card {
   background-color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
+  background-color: white;
+  padding: 0.75rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: 600;
-  color: #555;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  padding-left: 0.25rem;
 }
 
 .input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  padding: 0.75rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
   font-size: 1rem;
+  background-color: #ffffff;
+  transition: border-color 0.2s;
 }
 
-/* Стили для других элементов (сценарии, торговые пары, дашборд) */
+.input:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Стили для формы добавления пары с выровненными полями */
+.form-section-title {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: #1a1a1a;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 0.75rem;
+}
+
+.form-labels-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.form-inputs-row {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.form-label-item {
+  flex: 1;
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-input-item {
+  flex: 1;
+  padding: 0 0.5rem;
+}
+
+.form-button-container {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Стили для секции сценариев */
 .scenario-options {
   display: flex;
-  gap: 10px;
+  gap: 1rem;
+  margin-top: 0.5rem;
 }
 
 .scenario-option {
   flex: 1;
-  background-color: #f9f9f9;
-  padding: 10px;
-  border-radius: 5px;
-  text-align: center;
+  padding: 0.75rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
   cursor: pointer;
-  border: 2px solid transparent;
+  text-align: center;
   transition: all 0.3s ease;
 }
 
 .scenario-option.active {
-  border-color: #4285f4;
-  background-color: #e8f0fe;
+  border-color: #1890ff;
+  background-color: rgba(24, 144, 255, 0.1);
 }
 
+.option-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.option-desc {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Стили для торговых пар */
 .pairs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f0f5ff;
+  border-radius: 8px;
+  border: 1px solid #d6e4ff;
 }
 
 .pair-card {
-  background-color: #f9f9f9;
-  border-left: 5px solid #ddd;
-  border-radius: 5px;
-  padding: 10px;
-  transition: all 0.3s ease;
+  border: 1px solid #d9d9d9;
+  border-left-width: 5px;
+  border-radius: 4px;
+  padding: 0.75rem;
+  background-color: white;
   cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .pair-card.active {
-  background-color: #e8f0fe;
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
+.pair-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.pair-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.pair-status {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.active-status {
+  background-color: #52c41a;
+  color: white;
+}
+
+.inactive-status {
+  background-color: #d9d9d9;
+  color: #666;
+}
+
+.pair-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 0.5rem;
+}
+
+.stat-value {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+/* Стили для дашборда */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .dashboard-card {
-  padding: 20px;
-  border-radius: 10px;
+  border-radius: 8px;
+  padding: 1.25rem;
   color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .blue-gradient {
-  background: linear-gradient(135deg, #4285f4, #34a853);
+  background: linear-gradient(135deg, #1890ff, #096dd9);
 }
 
 .green-gradient {
-  background: linear-gradient(135deg, #34a853, #fbbc05);
+  background: linear-gradient(135deg, #52c41a, #389e0d);
 }
 
 .purple-gradient {
-  background: linear-gradient(135deg, #a142f4, #4285f4);
+  background: linear-gradient(135deg, #722ed1, #531dab);
 }
 
-/* Таблицы */
-.table {
+.dashboard-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.subtext {
+  font-size: 1rem;
+  opacity: 0.85;
+  margin-bottom: 0.5rem;
+}
+
+.small-text {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Стили для этапов */
+.milestone-section {
+  margin-bottom: 1.5rem;
+  background-color: #f0f7ff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border: 1px solid #d0e3ff;
+}
+
+.milestone-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #0050b3;
+  padding: 0.75rem;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  text-align: center;
+  border-bottom: 3px solid #1890ff;
+}
+
+.milestone-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
 }
 
-.table th, .table td {
-  padding: 10px;
-  border: 1px solid #ddd;
-}
-
-.table thead {
+.milestone-even {
   background-color: #f5f5f5;
 }
 
-/* Цветовые классы */
-.text-success { color: #28a745; }
-.text-warning { color: #ffc107; }
-.text-orange { color: #fd7e14; }
-.text-danger { color: #dc3545; }
-.text-primary { color: #4285f4; }
-.font-bold { font-weight: 600; }
+.milestone-odd {
+  background-color: #fff;
+}
+
+.milestone-date {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+/* Стили для графиков */
+.chart-section {
+  margin-bottom: 1.5rem;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chart-container {
+  margin-bottom: 1rem;
+}
+
+.chart-title {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.chart-body {
+  height: 300px;
+}
+
+/* Стили для вкладок */
+.tabs-container {
+  margin-bottom: 2rem;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #d9d9d9;
+  margin-bottom: 1rem;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.tab.active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+}
+
+/* Стили для таблиц */
+.table-container {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.table th, .table td {
+  padding: 0.75rem;
+  border: 1px solid #d9d9d9;
+}
+
+.table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sticky-header {
+  position: sticky;
+  left: 0;
+  background-color: #f5f5f5;
+  z-index: 2;
+}
+
+.sticky-cell {
+  position: sticky;
+  left: 0;
+  background-color: inherit;
+  z-index: 1;
+}
+
+.row-even {
+  background-color: #fff;
+}
+
+.row-odd {
+  background-color: #f9f9f9;
+}
+
+/* Текстовые стили */
+.font-bold {
+  font-weight: 600;
+}
+
+.text-success {
+  color: #52c41a;
+}
+
+.text-warning {
+  color: #faad14;
+}
+
+.text-orange {
+  color: #fa8c16;
+}
+
+.text-danger {
+  color: #f5222d;
+}
+
+.text-primary {
+  color: #1890ff;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Стили для информационных блоков */
+.info-box {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-title {
+  color: #0050b3;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.info-list {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.info-list li {
+  margin-bottom: 0.5rem;
+}
+
+.highlight {
+  font-weight: 600;
+  color: #1890ff;
+}
+
+/* Стили для статистических карточек */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.stat-title {
+  font-size: 1rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+  text-align: center;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.item-name {
+  display: flex;
+  align-items: center;
+}
+
+.color-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.item-value {
+  font-weight: 500;
+}
+
+/* Стили для предупреждений */
+.warning-box {
+  background-color: #fff2e8;
+  border: 1px solid #ffbb96;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.warning-title {
+  color: #d4380d;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.warning-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.warning-list li {
+  margin-bottom: 0.5rem;
+}
