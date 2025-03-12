@@ -1,34 +1,73 @@
-// Функция расчета распределения риска
-  const calculateRiskAllocation = (deposit, pairsState) => {
-    const activePairs = pairsState.filter(pair => pair.active);
-    if (activePairs.length === 0) return [];
-
-    const riskPercent = calculateRiskPercent(deposit, initialRiskPercent);
-    const totalRiskAmount = (deposit * riskPercent) / 100;
-
-    // Рассчитаем общее EV для активных пар
-    const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
-
-    // Распределим риск пропорционально EV
-    return pairsState.map(pair => {
-      if (!pair.active) return { ...pair, riskAmount: 0 };
-
-      const allocationPercent = (pair.ev / totalEV) * 100;
-      const riskAmount = (allocationPercent / 100) * totalRiskAmount;
-
-      return {
-        ...pair,
-        allocationPercent: parseFloat(allocationPercent.toFixed(1)),
-        riskAmount: parseFloat(riskAmount.toFixed(2))
-      };
-    });
-  };import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 // Основной компонент приложения
 const App = () => {
   // Состояние для темной темы
   const [darkMode, setDarkMode] = useState(false);
+
+  // Состояния калькулятора
+  const [initialDeposit, setInitialDeposit] = useState(400);
+  const [targetDeposit, setTargetDeposit] = useState(100000);
+  const [initialRiskPercent, setInitialRiskPercent] = useState(10);
+  const [activeTab, setActiveTab] = useState('projection'); // Установим 'projection' по умолчанию
+  const [scenarioType, setScenarioType] = useState('realistic');
+  const [monthlyDeposit, setMonthlyDeposit] = useState(0); // Новое состояние для ежемесячного пополнения
+  const [isCalculating, setIsCalculating] = useState(false); // Состояние для кнопки расчета
+
+  // Состояния для управления тикерами
+  const [pairsExpanded, setPairsExpanded] = useState(true); // Список пар развернут по умолчанию (было false)
+  const [newPair, setNewPair] = useState({
+    pair: '',
+    ev: 0,
+    winrate: 40,
+    rr: 2,
+    monthlyTrades: 60,
+    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Случайный цвет
+  });
+
+  // Обновлённый список торговых пар
+  const [tradingPairs, setTradingPairs] = useState([
+    { pair: 'XAIUSDT', active: true, ev: 0.575, winrate: 31.5, rr: 4, allocationPercent: 31.3, monthlyTrades: 42, color: '#FF8042' },
+    { pair: 'PEOPLEUSDT', active: true, ev: 0.528, winrate: 38.2, rr: 3, allocationPercent: 28.8, monthlyTrades: 51, color: '#00C49F' },
+    { pair: 'SPXUSDT', active: true, ev: 0.401, winrate: 46.7, rr: 2, allocationPercent: 21.9, monthlyTrades: 61, color: '#0088FE' },
+    { pair: 'AI16ZUSDT', active: true, ev: 0.29, winrate: 43, rr: 2, allocationPercent: 15.8, monthlyTrades: 61, color: '#FFBB28' }
+  ]);
+
+  // Состояния для Монте-Карло симуляции
+  const [monteCarloResults, setMonteCarloResults] = useState(null);
+  const [showMonteCarlo, setShowMonteCarlo] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // Результаты расчетов
+  const [projectionResults, setProjectionResults] = useState(null);
+  const [growthChartData, setGrowthChartData] = useState([]);
+  const [pairPerformanceData, setPairPerformanceData] = useState([]);
+  const [milestones, setMilestones] = useState([]);
+
+  // Состояние для хранения данных о риске слива
+  const [bankruptcyRisk, setBankruptcyRisk] = useState({
+    probability: 0,
+    criticalLosses: 0,
+    timeEstimate: null
+  });
+
+  // Исправленный расчет риска в зависимости от размера депозита
+  const calculateRiskPercent = (deposit, userRiskPercent = initialRiskPercent) => {
+    // Для начального депозита всегда используем точное значение, заданное пользователем
+    if (deposit === initialDeposit) return userRiskPercent;
+    
+    // Для последующих расчетов используем ступенчатое снижение
+    if (deposit < 1000) return userRiskPercent;
+    if (deposit < 2000) return userRiskPercent * 0.9;
+    if (deposit < 3000) return userRiskPercent * 0.8;
+    if (deposit < 5000) return userRiskPercent * 0.7;
+    if (deposit < 10000) return userRiskPercent * 0.6;
+    if (deposit < 20000) return userRiskPercent * 0.5;
+    if (deposit < 50000) return userRiskPercent * 0.4;
+    if (deposit < 75000) return userRiskPercent * 0.35;
+    return userRiskPercent * 0.3;
+  };
 
   // Эффект для применения темы при загрузке и изменении
   useEffect(() => {
@@ -58,26 +97,6 @@ const App = () => {
     }
   };
 
-  // Состояния калькулятора
-  const [initialDeposit, setInitialDeposit] = useState(400);
-  const [targetDeposit, setTargetDeposit] = useState(100000);
-  const [initialRiskPercent, setInitialRiskPercent] = useState(10);
-  const [activeTab, setActiveTab] = useState('projection'); // Установим 'projection' по умолчанию
-  const [scenarioType, setScenarioType] = useState('realistic');
-  const [monthlyDeposit, setMonthlyDeposit] = useState(0); // Новое состояние для ежемесячного пополнения
-  const [isCalculating, setIsCalculating] = useState(false); // Состояние для кнопки расчета
-
-  // Состояния для управления тикерами
-  const [pairsExpanded, setPairsExpanded] = useState(true); // Список пар развернут по умолчанию (было false)
-  const [newPair, setNewPair] = useState({
-    pair: '',
-    ev: 0,
-    winrate: 40,
-    rr: 2,
-    monthlyTrades: 60,
-    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Случайный цвет
-  });
-
   // Функция для расчета вероятности последовательных стоп-лоссов
   const calculateConsecutiveStopLossProbability = (winrate, count) => {
     const lossrate = (100 - winrate) / 100;
@@ -103,6 +122,129 @@ const App = () => {
       mostProbable: mostProbable
     };
   };
+
+  // Функция для создания динамичного набора промежуточных целей
+  const generateMilestoneTargets = (startDeposit, targetDeposit) => {
+    const milestones = [];
+    
+    // Добавляем стандартные круглые цели, если они в диапазоне
+    const standardMilestones = [1000, 5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000];
+    for (const milestone of standardMilestones) {
+      if (milestone > startDeposit && milestone <= targetDeposit) {
+        milestones.push(milestone);
+      }
+    }
+    
+    // Добавляем процентные цели от целевого депозита
+    const percentMilestones = [0.25, 0.5, 0.75];
+    for (const percent of percentMilestones) {
+      const value = Math.round(targetDeposit * percent);
+      if (value > startDeposit && !milestones.includes(value)) {
+        milestones.push(value);
+      }
+    }
+    
+    // Если целевой депозит крупный, добавляем дополнительные крупные цели
+    if (targetDeposit > 100000) {
+      const step = targetDeposit > 1000000 ? 500000 : 100000;
+      for (let i = 100000; i < targetDeposit; i += step) {
+        if (i > startDeposit && !milestones.includes(i)) {
+          milestones.push(i);
+        }
+      }
+    }
+    
+    // Всегда добавляем целевой депозит, если он еще не включен
+    if (!milestones.includes(targetDeposit)) {
+      milestones.push(targetDeposit);
+    }
+    
+    // Сортируем и возвращаем уникальные значения
+    return [...new Set(milestones)].sort((a, b) => a - b);
+  };
+
+  // Функция для проверки и добавления промежуточных целей с привязкой к целевому депозиту
+  const checkAndAddMilestone = (currentDeposit, milestoneTargets, milestoneResults, monthIndex) => {
+    const updatedMilestones = [...milestoneResults];
+
+    for (let i = 0; i < milestoneTargets.length; i++) {
+      if (updatedMilestones.findIndex(m => m.target === milestoneTargets[i]) === -1 &&
+          currentDeposit >= milestoneTargets[i]) {
+        updatedMilestones.push({
+          target: milestoneTargets[i],
+          months: monthIndex + 1,
+          days: Math.ceil((monthIndex + 1) * 30.5),
+          date: new Date(Date.now() + (monthIndex + 1) * 30.5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          riskPercent: calculateRiskPercent(milestoneTargets[i])
+        });
+      }
+    }
+
+    return updatedMilestones;
+  };
+
+  // Функция для расчета вероятности полной потери депозита
+  const calculateBankruptcyRisk = useCallback((deposit, riskPercent, pairs) => {
+    // Проверка на наличие активных пар
+    const activePairs = pairs.filter(pair => pair.active);
+    if (activePairs.length === 0) return { probability: 0, criticalLosses: 0, timeEstimate: null };
+    
+    // Средневзвешенный винрейт и RR по активным парам
+    const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
+    const weightedWinrate = activePairs.reduce((sum, pair) => 
+      sum + (pair.winrate * (pair.ev / totalEV)), 0);
+    const weightedRR = activePairs.reduce((sum, pair) => 
+      sum + (pair.rr * (pair.ev / totalEV)), 0);
+    
+    // Средний процент риска на сделку (снижается по мере роста депозита)
+    const avgRiskPercent = riskPercent;
+    
+    // Вероятность проигрыша в одной сделке
+    const lossRate = (100 - weightedWinrate) / 100;
+    
+    // Расчет количества последовательных убытков, необходимых для слива депозита
+    const criticalLosses = Math.ceil(Math.log(0.1 / deposit) / Math.log(1 - avgRiskPercent/100));
+    
+    // Вероятность такой последовательности убытков
+    const sequenceProbability = Math.pow(lossRate, criticalLosses) * 100;
+    
+    // Общее количество сделок в месяц по всем парам
+    const monthlyTrades = activePairs.reduce((sum, pair) => sum + pair.monthlyTrades, 0);
+    
+    // Ожидаемое количество таких последовательностей в месяц
+    // Используем формулу для ожидаемого числа серий определенной длины
+    const expectedSequencesPerMonth = (monthlyTrades - criticalLosses + 1) * sequenceProbability / 100;
+    
+    // Среднее время до первого появления такой последовательности (в месяцах)
+    // Если вероятность очень мала, указываем null
+    const timeEstimate = expectedSequencesPerMonth > 0 
+      ? Math.ceil(1 / expectedSequencesPerMonth)
+      : null;
+    
+    // Среднемесячное EV с учетом всех факторов для итоговой корректировки
+    const monthlyEV = activePairs.reduce((sum, pair) => 
+      sum + pair.monthlyTrades * pair.riskAmount * (pair.winrate/100 * pair.rr - (1 - pair.winrate/100)), 0);
+    
+    // Корректировка с учетом соотношения риск/вознаграждение и положительного EV
+    // Чем выше EV и RR, тем ниже реальная вероятность слива
+    const evAdjustment = monthlyEV > 0 ? 1 / (1 + monthlyEV / deposit * 10) : 1;
+    
+    // Итоговая скорректированная вероятность банкротства
+    // С минимальным порогом 0.01% и максимальным 99.99%
+    let adjustedProbability = sequenceProbability * evAdjustment;
+    adjustedProbability = Math.min(Math.max(adjustedProbability, 0.01), 99.99);
+    
+    // Дополнительная поправка для малых депозитов (более рискованных)
+    if (deposit < 1000) {
+      adjustedProbability = adjustedProbability * (1 + (1000 - deposit) / 1000);
+    }
+    
+    return {
+      probability: parseFloat(adjustedProbability.toFixed(2)),
+      criticalLosses: criticalLosses,
+      timeEstimate: timeEstimate
+    };
+  }, []);
 
   // Обновленный компонент для отображения вероятностей стоп-лоссов
   const StopLossProbabilityCard = memo(({ tradingPairs }) => {
@@ -139,25 +281,6 @@ const App = () => {
       </div>
     );
   });
-
-  // Обновлённый список торговых пар
-  const [tradingPairs, setTradingPairs] = useState([
-    { pair: 'XAIUSDT', active: true, ev: 0.575, winrate: 31.5, rr: 4, allocationPercent: 31.3, monthlyTrades: 42, color: '#FF8042' },
-    { pair: 'PEOPLEUSDT', active: true, ev: 0.528, winrate: 38.2, rr: 3, allocationPercent: 28.8, monthlyTrades: 51, color: '#00C49F' },
-    { pair: 'SPXUSDT', active: true, ev: 0.401, winrate: 46.7, rr: 2, allocationPercent: 21.9, monthlyTrades: 61, color: '#0088FE' },
-    { pair: 'AI16ZUSDT', active: true, ev: 0.29, winrate: 43, rr: 2, allocationPercent: 15.8, monthlyTrades: 61, color: '#FFBB28' }
-  ]);
-
-  // Состояния для Монте-Карло симуляции
-  const [monteCarloResults, setMonteCarloResults] = useState(null);
-  const [showMonteCarlo, setShowMonteCarlo] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
-
-  // Результаты расчетов
-  const [projectionResults, setProjectionResults] = useState(null);
-  const [growthChartData, setGrowthChartData] = useState([]);
-  const [pairPerformanceData, setPairPerformanceData] = useState([]);
-  const [milestones, setMilestones] = useState([]);
 
   // Модифицированная функция для Монте-Карло симуляции торговых результатов
   const runMonteCarloSimulation = (
@@ -347,425 +470,31 @@ const App = () => {
     return entryFees + winExitFees + lossExitFees + slippage;
   };
 
-  // Исправленный расчет риска в зависимости от размера депозита
-  const calculateRiskPercent = (deposit, userRiskPercent = initialRiskPercent) => {
-    // Для начального депозита всегда используем точное значение, заданное пользователем
-    if (deposit === initialDeposit) return userRiskPercent;
-    
-    // Для последующих расчетов используем ступенчатое снижение
-    if (deposit < 1000) return userRiskPercent;
-    if (deposit < 2000) return userRiskPercent * 0.9;
-    if (deposit < 3000) return userRiskPercent * 0.8;
-    if (deposit < 5000) return userRiskPercent * 0.7;
-    if (deposit < 10000) return userRiskPercent * 0.6;
-    if (deposit < 20000) return userRiskPercent * 0.5;
-    if (deposit < 50000) return userRiskPercent * 0.4;
-    if (deposit < 75000) return userRiskPercent * 0.35;
-    return userRiskPercent * 0.3;
-  };
+  // Функция расчета распределения риска
+  const calculateRiskAllocation = (deposit, pairsState) => {
+    const activePairs = pairsState.filter(pair => pair.active);
+    if (activePairs.length === 0) return [];
 
-  // Исправленный компонент таблицы проекции
-  const ProjectionTable = memo(({ projectionResults, tradingPairs, formatCurrency, formatNumber, getRiskColor, calculateRiskAllocation, initialDeposit }) => {
-    if (!projectionResults) return <div className="text-center">Введите параметры для расчета</div>;
+    const riskPercent = calculateRiskPercent(deposit, initialRiskPercent);
+    const totalRiskAmount = (deposit * riskPercent) / 100;
 
-    return (
-      <div className="table-container">
-        <table className="table">
-          <thead>
-            <tr>
-              <th className="sticky-header">Месяц</th>
-              <th>Депозит</th>
-              <th>Риск (%)</th>
-              <th>Риск ($)</th>
-              {tradingPairs.filter(p => p.active).map(pair => (
-                <th key={pair.pair} style={{backgroundColor: `${pair.color}30`, color: 'var(--text-color)'}}>
-                  {pair.pair}
-                </th>
-              ))}
-              <th>Сделок</th>
-              <th>Прибыль</th>
-              <th>Комиссии</th>
-              <th>Просадка (%)</th>
-              <th>Рост</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projectionResults.monthlyData.map((month, index) => {
-              const riskClass = getRiskColor(month.riskPercent);
-              const rowClass = index % 2 === 0 ? "row-even" : "row-odd";
-
-              // Для месяца 0 (начальный депозит) нет процента роста
-              // Для других месяцев расчет роста основан на предыдущем месяце
-              const growthPercent = month.month === 0
-                ? '-'
-                : ((month.deposit / projectionResults.monthlyData[index-1].deposit - 1) * 100).toFixed(1);
-
-              // Распределение риска между парами (для месяца 0 только показываем распределение, но без фактических сделок)
-              const allocatedPairs = calculateRiskAllocation(month.deposit, tradingPairs);
-
-              return (
-                <tr key={index} className={rowClass}>
-                  <td className="font-bold sticky-cell">{month.month}</td>
-                  <td className="font-bold">{formatCurrency(month.deposit)}</td>
-                  <td className={`${riskClass} font-bold`}>{month.riskPercent.toFixed(1)}%</td>
-                  <td>{formatCurrency(month.riskAmount)}</td>
-
-                  {allocatedPairs.filter(p => p.active).map(pair => (
-                    <td key={pair.pair} style={{backgroundColor: `${pair.color}10`}}>
-                      {formatCurrency(pair.riskAmount)}
-                    </td>
-                  ))}
-
-                  <td>{month.month === 0 ? '-' : formatNumber(month.trades)}</td>
-                  <td className={`font-bold ${month.profit > 0 ? 'text-success' : month.profit < 0 ? 'text-danger' : ''}`}>
-                    {month.month === 0 ? '-' : formatCurrency(month.profit)}
-                  </td>
-                  <td className="text-danger">
-                    {month.month === 0 ? '-' : `-${formatCurrency(month.fees)}`}
-                  </td>
-                  <td className={`${month.drawdown > 10 ? 'text-danger' : month.drawdown > 5 ? 'text-warning' : ''}`}>
-                    {month.month === 0 ? '-' : month.drawdown.toFixed(1) + '%'}
-                  </td>
-                  <td className={`font-bold ${
-                    growthPercent === '-' ? '' :
-                    parseFloat(growthPercent) > 0 ? 'text-success' :
-                    parseFloat(growthPercent) < 0 ? 'text-danger' : ''
-                  }`}>
-                    {growthPercent === '-' ? '-' :
-                     parseFloat(growthPercent) > 0 ? `+${growthPercent}%` :
-                     `${growthPercent}%`}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
-  });
-
-  // Оптимизированный компонент для графика
-  const GrowthChart = memo(({ growthChartData, formatYAxis, formatCurrency, targetDeposit }) => {
-    if (!growthChartData || growthChartData.length === 0) return null;
-
-    return (
-      <div className="card chart-container">
-        <h3 className="chart-title">Прогноз роста депозита</h3>
-        <div className="chart-body">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={growthChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" label={{ value: 'Месяц', position: 'insideBottomRight', offset: -10 }} />
-              <YAxis tickFormatter={formatYAxis} scale={targetDeposit > 10000 ? 'log' : 'auto'} domain={['auto', 'auto']} />
-              <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} labelFormatter={(label) => `Месяц ${label}`} />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="deposit"
-                name="Депозит"
-                stroke="#8884d8"
-                fill="url(#colorDeposit)"
-                strokeWidth={2}
-                activeDot={{ r: 8 }}
-              />
-              <defs>
-                <linearGradient id="colorDeposit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
-                </linearGradient>
-              </defs>
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    );
-  });
-
-  // Улучшенный компонент для результатов Монте-Карло
-  const MonteCarloResults = memo(({ mcResults, formatCurrency, formatYAxis, initialDeposit }) => {
-    if (!mcResults) return null;
-
-    const { percentiles, avgFinalDeposit, avgMaxDrawdown, period } = mcResults;
-    const timeDescription = period ? `за ${period.months} месяцев (${period.years} лет)` : '';
-
-    // Данные для графика персентилей
-    const percentileChartData = [
-      { name: 'Худший', value: percentiles.worst.finalDeposit },
-      { name: '10%', value: percentiles.p10.finalDeposit },
-      { name: '25%', value: percentiles.p25.finalDeposit },
-      { name: 'Медиана', value: percentiles.p50.finalDeposit },
-      { name: 'Средняя', value: avgFinalDeposit },
-      { name: '75%', value: percentiles.p75.finalDeposit },
-      { name: '90%', value: percentiles.p90.finalDeposit },
-      { name: 'Лучший', value: percentiles.best.finalDeposit }
-    ];
-
-    // Данные для графика-веера (выбираем репрезентативные итерации)
-    const fanChartData = [
-      percentiles.p10,
-      percentiles.p25,
-      percentiles.p50,
-      percentiles.p75,
-      percentiles.p90
-    ].map(percentile => percentile.monthlyResults);
-
-    return (
-      <div className="monte-carlo-results">
-        <h3 className="section-title">
-          Результаты Монте-Карло симуляции {timeDescription}
-        </h3>
-
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3 className="stat-title">Распределение конечных результатов</h3>
-            <div className="chart-body">
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={percentileChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={formatYAxis} />
-                  <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} />
-                  <Bar dataKey="value" name="Финальный депозит" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <h3 className="stat-title">Вероятностные показатели</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span>Среднее значение:</span>
-                <span className="item-value">{formatCurrency(avgFinalDeposit)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Медиана:</span>
-                <span className="item-value">{formatCurrency(percentiles.p50.finalDeposit)}</span>
-              </div>
-              <div className="stat-item">
-                <span>90% вероятность ≥</span>
-                <span className="item-value">{formatCurrency(percentiles.p10.finalDeposit)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Средняя ROI:</span>
-                <span className="item-value">{percentiles.p50.roi.toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Средняя макс. просадка:</span>
-                <span className="item-value text-danger">{avgMaxDrawdown.toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Шанс удвоения:</span>
-                <span className="item-value">
-                  {(mcResults.allResults.filter(r => r.finalDeposit >= initialDeposit * 2).length / mcResults.iterations * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="chart-container">
-          <h3 className="chart-title">Веер вероятностных сценариев</h3>
-          <div className="chart-body">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" type="number" domain={[1, fanChartData[0].length]} label={{ value: 'Месяц', position: 'insideBottomRight', offset: -10 }} />
-                <YAxis tickFormatter={formatYAxis} />
-                <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} />
-                <Legend />
-
-                {/* 10-й процентиль */}
-                <Line
-                  data={fanChartData[0]}
-                  type="monotone"
-                  dataKey="deposit"
-                  name="10% сценарий"
-                  stroke="#ff0000"
-                  dot={false}
-                  strokeWidth={1}
-                />
-
-                {/* 25-й процентиль */}
-                <Line
-                  data={fanChartData[1]}
-                  type="monotone"
-                  dataKey="deposit"
-                  name="25% сценарий"
-                  stroke="#ff8042"
-                  dot={false}
-                  strokeWidth={1.5}
-                />
-
-                {/* Медиана */}
-                <Line
-                  data={fanChartData[2]}
-                  type="monotone"
-                  dataKey="deposit"
-                  name="Медианный сценарий"
-                  stroke="#8884d8"
-                  dot={false}
-                  strokeWidth={2}
-                />
-
-                {/* 75-й процентиль */}
-                <Line
-                  data={fanChartData[3]}
-                  type="monotone"
-                  dataKey="deposit"
-                  name="75% сценарий"
-                  stroke="#82ca9d"
-                  dot={false}
-                  strokeWidth={1.5}
-                />
-
-                {/* 90-й процентиль */}
-                <Line
-                  data={fanChartData[4]}
-                  type="monotone"
-                  dataKey="deposit"
-                  name="90% сценарий"
-                  stroke="#00c49f"
-                  dot={false}
-                  strokeWidth={1}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-    );
-  });
-
-  // Функция для проверки и добавления промежуточных целей с привязкой к целевому депозиту
-  const checkAndAddMilestone = (currentDeposit, milestoneTargets, milestoneResults, monthIndex) => {
-    const updatedMilestones = [...milestoneResults];
-
-    for (let i = 0; i < milestoneTargets.length; i++) {
-      if (updatedMilestones.findIndex(m => m.target === milestoneTargets[i]) === -1 &&
-          currentDeposit >= milestoneTargets[i]) {
-        updatedMilestones.push({
-          target: milestoneTargets[i],
-          months: monthIndex + 1,
-          days: Math.ceil((monthIndex + 1) * 30.5),
-          date: new Date(Date.now() + (monthIndex + 1) * 30.5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          riskPercent: calculateRiskPercent(milestoneTargets[i])
-        });
-      }
-    }
-
-    return updatedMilestones;
-  };
-  
-  // Функция для создания динамичного набора промежуточных целей
-  const generateMilestoneTargets = (startDeposit, targetDeposit) => {
-    const milestones = [];
-    
-    // Добавляем стандартные круглые цели, если они в диапазоне
-    const standardMilestones = [1000, 5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000];
-    for (const milestone of standardMilestones) {
-      if (milestone > startDeposit && milestone <= targetDeposit) {
-        milestones.push(milestone);
-      }
-    }
-    
-    // Добавляем процентные цели от целевого депозита
-    const percentMilestones = [0.25, 0.5, 0.75];
-    for (const percent of percentMilestones) {
-      const value = Math.round(targetDeposit * percent);
-      if (value > startDeposit && !milestones.includes(value)) {
-        milestones.push(value);
-      }
-    }
-    
-    // Если целевой депозит крупный, добавляем дополнительные крупные цели
-    if (targetDeposit > 100000) {
-      const step = targetDeposit > 1000000 ? 500000 : 100000;
-      for (let i = 100000; i < targetDeposit; i += step) {
-        if (i > startDeposit && !milestones.includes(i)) {
-          milestones.push(i);
-        }
-      }
-    }
-    
-    // Всегда добавляем целевой депозит, если он еще не включен
-    if (!milestones.includes(targetDeposit)) {
-      milestones.push(targetDeposit);
-    }
-    
-    // Сортируем и возвращаем уникальные значения
-    return [...new Set(milestones)].sort((a, b) => a - b);
-  };
-
-  // Функция для расчета вероятности полной потери депозита
-  const calculateBankruptcyRisk = useCallback((deposit, riskPercent, pairs) => {
-    // Проверка на наличие активных пар
-    const activePairs = pairs.filter(pair => pair.active);
-    if (activePairs.length === 0) return { probability: 0, criticalLosses: 0, timeEstimate: null };
-    
-    // Средневзвешенный винрейт и RR по активным парам
+    // Рассчитаем общее EV для активных пар
     const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
-    const weightedWinrate = activePairs.reduce((sum, pair) => 
-      sum + (pair.winrate * (pair.ev / totalEV)), 0);
-    const weightedRR = activePairs.reduce((sum, pair) => 
-      sum + (pair.rr * (pair.ev / totalEV)), 0);
-    
-    // Средний процент риска на сделку (снижается по мере роста депозита)
-    const avgRiskPercent = riskPercent;
-    
-    // Вероятность проигрыша в одной сделке
-    const lossRate = (100 - weightedWinrate) / 100;
-    
-    // Расчет количества последовательных убытков, необходимых для слива депозита
-    const criticalLosses = Math.ceil(Math.log(0.1 / deposit) / Math.log(1 - avgRiskPercent/100));
-    
-    // Вероятность такой последовательности убытков
-    const sequenceProbability = Math.pow(lossRate, criticalLosses) * 100;
-    
-    // Общее количество сделок в месяц по всем парам
-    const monthlyTrades = activePairs.reduce((sum, pair) => sum + pair.monthlyTrades, 0);
-    
-    // Ожидаемое количество таких последовательностей в месяц
-    // Используем формулу для ожидаемого числа серий определенной длины
-    const expectedSequencesPerMonth = (monthlyTrades - criticalLosses + 1) * sequenceProbability / 100;
-    
-    // Среднее время до первого появления такой последовательности (в месяцах)
-    // Если вероятность очень мала, указываем null
-    const timeEstimate = expectedSequencesPerMonth > 0 
-      ? Math.ceil(1 / expectedSequencesPerMonth)
-      : null;
-    
-    // Среднемесячное EV с учетом всех факторов для итоговой корректировки
-    const monthlyEV = activePairs.reduce((sum, pair) => 
-      sum + pair.monthlyTrades * pair.riskAmount * (pair.winrate/100 * pair.rr - (1 - pair.winrate/100)), 0);
-    
-    // Корректировка с учетом соотношения риск/вознаграждение и положительного EV
-    // Чем выше EV и RR, тем ниже реальная вероятность слива
-    const evAdjustment = monthlyEV > 0 ? 1 / (1 + monthlyEV / deposit * 10) : 1;
-    
-    // Итоговая скорректированная вероятность банкротства
-    // С минимальным порогом 0.01% и максимальным 99.99%
-    let adjustedProbability = sequenceProbability * evAdjustment;
-    adjustedProbability = Math.min(Math.max(adjustedProbability, 0.01), 99.99);
-    
-    // Дополнительная поправка для малых депозитов (более рискованных)
-    if (deposit < 1000) {
-      adjustedProbability = adjustedProbability * (1 + (1000 - deposit) / 1000);
-    }
-    
-    return {
-      probability: parseFloat(adjustedProbability.toFixed(2)),
-      criticalLosses: criticalLosses,
-      timeEstimate: timeEstimate
-    };
-  }, []);
-  
-  // Состояние для хранения данных о риске слива
-  const [bankruptcyRisk, setBankruptcyRisk] = useState({
-    probability: 0,
-    criticalLosses: 0,
-    timeEstimate: null
-  });
+
+    // Распределим риск пропорционально EV
+    return pairsState.map(pair => {
+      if (!pair.active) return { ...pair, riskAmount: 0 };
+
+      const allocationPercent = (pair.ev / totalEV) * 100;
+      const riskAmount = (allocationPercent / 100) * totalRiskAmount;
+
+      return {
+        ...pair,
+        allocationPercent: parseFloat(allocationPercent.toFixed(1)),
+        riskAmount: parseFloat(riskAmount.toFixed(2))
+      };
+    });
+  };
 
   // Расчет ожидаемой прибыли для одной пары
   const calculatePairProfit = (pair, deposit, scenarioMultiplier = 1) => {
@@ -1251,6 +980,123 @@ const App = () => {
     );
   };
 
+  // Исправленный компонент таблицы проекции
+  const ProjectionTable = memo(({ projectionResults, tradingPairs, formatCurrency, formatNumber, getRiskColor, calculateRiskAllocation, initialDeposit }) => {
+    if (!projectionResults) return <div className="text-center">Введите параметры для расчета</div>;
+
+    return (
+      <div className="table-container">
+        <table className="table">
+          <thead>
+            <tr>
+              <th className="sticky-header">Месяц</th>
+              <th>Депозит</th>
+              <th>Риск (%)</th>
+              <th>Риск ($)</th>
+              {tradingPairs.filter(p => p.active).map(pair => (
+                <th key={pair.pair} style={{backgroundColor: `${pair.color}30`, color: 'var(--text-color)'}}>
+                  {pair.pair}
+                </th>
+              ))}
+              <th>Сделок</th>
+              <th>Прибыль</th>
+              <th>Комиссии</th>
+              <th>Просадка (%)</th>
+              <th>Рост</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projectionResults.monthlyData.map((month, index) => {
+              const riskClass = getRiskColor(month.riskPercent);
+              const rowClass = index % 2 === 0 ? "row-even" : "row-odd";
+
+              // Для месяца 0 (начальный депозит) нет процента роста
+              // Для других месяцев расчет роста основан на предыдущем месяце
+              const growthPercent = month.month === 0
+                ? '-'
+                : ((month.deposit / projectionResults.monthlyData[index-1].deposit - 1) * 100).toFixed(1);
+
+              // Распределение риска между парами (для месяца 0 только показываем распределение, но без фактических сделок)
+              const allocatedPairs = calculateRiskAllocation(month.deposit, tradingPairs);
+
+              return (
+                <tr key={index} className={rowClass}>
+                  <td className="font-bold sticky-cell">{month.month}</td>
+                  <td className="font-bold">{formatCurrency(month.deposit)}</td>
+                  <td className={`${riskClass} font-bold`}>{month.riskPercent.toFixed(1)}%</td>
+                  <td>{formatCurrency(month.riskAmount)}</td>
+
+                  {allocatedPairs.filter(p => p.active).map(pair => (
+                    <td key={pair.pair} style={{backgroundColor: `${pair.color}10`}}>
+                      {formatCurrency(pair.riskAmount)}
+                    </td>
+                  ))}
+
+                  <td>{month.month === 0 ? '-' : formatNumber(month.trades)}</td>
+                  <td className={`font-bold ${month.profit > 0 ? 'text-success' : month.profit < 0 ? 'text-danger' : ''}`}>
+                    {month.month === 0 ? '-' : formatCurrency(month.profit)}
+                  </td>
+                  <td className="text-danger">
+                    {month.month === 0 ? '-' : `-${formatCurrency(month.fees)}`}
+                  </td>
+                  <td className={`${month.drawdown > 10 ? 'text-danger' : month.drawdown > 5 ? 'text-warning' : ''}`}>
+                    {month.month === 0 ? '-' : month.drawdown.toFixed(1) + '%'}
+                  </td>
+                  <td className={`font-bold ${
+                    growthPercent === '-' ? '' :
+                    parseFloat(growthPercent) > 0 ? 'text-success' :
+                    parseFloat(growthPercent) < 0 ? 'text-danger' : ''
+                  }`}>
+                    {growthPercent === '-' ? '-' :
+                     parseFloat(growthPercent) > 0 ? `+${growthPercent}%` :
+                     `${growthPercent}%`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  });
+
+  // Оптимизированный компонент для графика
+  const GrowthChart = memo(({ growthChartData, formatYAxis, formatCurrency, targetDeposit }) => {
+    if (!growthChartData || growthChartData.length === 0) return null;
+
+    return (
+      <div className="card chart-container">
+        <h3 className="chart-title">Прогноз роста депозита</h3>
+        <div className="chart-body">
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={growthChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" label={{ value: 'Месяц', position: 'insideBottomRight', offset: -10 }} />
+              <YAxis tickFormatter={formatYAxis} scale={targetDeposit > 10000 ? 'log' : 'auto'} domain={['auto', 'auto']} />
+              <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} labelFormatter={(label) => `Месяц ${label}`} />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="deposit"
+                name="Депозит"
+                stroke="#8884d8"
+                fill="url(#colorDeposit)"
+                strokeWidth={2}
+                activeDot={{ r: 8 }}
+              />
+              <defs>
+                <linearGradient id="colorDeposit" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  });
+
   // Рендер дашборда с основными показателями
   const renderDashboard = () => {
     if (!projectionResults) return null;
@@ -1381,6 +1227,162 @@ const App = () => {
       </div>
     );
   };
+
+  // Улучшенный компонент для результатов Монте-Карло
+  const MonteCarloResults = memo(({ mcResults, formatCurrency, formatYAxis, initialDeposit }) => {
+    if (!mcResults) return null;
+
+    const { percentiles, avgFinalDeposit, avgMaxDrawdown, period } = mcResults;
+    const timeDescription = period ? `за ${period.months} месяцев (${period.years} лет)` : '';
+
+    // Данные для графика персентилей
+    const percentileChartData = [
+      { name: 'Худший', value: percentiles.worst.finalDeposit },
+      { name: '10%', value: percentiles.p10.finalDeposit },
+      { name: '25%', value: percentiles.p25.finalDeposit },
+      { name: 'Медиана', value: percentiles.p50.finalDeposit },
+      { name: 'Средняя', value: avgFinalDeposit },
+      { name: '75%', value: percentiles.p75.finalDeposit },
+      { name: '90%', value: percentiles.p90.finalDeposit },
+      { name: 'Лучший', value: percentiles.best.finalDeposit }
+    ];
+
+    // Данные для графика-веера (выбираем репрезентативные итерации)
+    const fanChartData = [
+      percentiles.p10,
+      percentiles.p25,
+      percentiles.p50,
+      percentiles.p75,
+      percentiles.p90
+    ].map(percentile => percentile.monthlyResults);
+
+    return (
+      <div className="monte-carlo-results">
+        <h3 className="section-title">
+          Результаты Монте-Карло симуляции {timeDescription}
+        </h3>
+
+        <div className="stats-grid">
+          <div className="stat-card">
+            <h3 className="stat-title">Распределение конечных результатов</h3>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={percentileChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={formatYAxis} />
+                  <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} />
+                  <Bar dataKey="value" name="Финальный депозит" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <h3 className="stat-title">Вероятностные показатели</h3>
+            <div className="stat-content">
+              <div className="stat-item">
+                <span>Среднее значение:</span>
+                <span className="item-value">{formatCurrency(avgFinalDeposit)}</span>
+              </div>
+              <div className="stat-item">
+                <span>Медиана:</span>
+                <span className="item-value">{formatCurrency(percentiles.p50.finalDeposit)}</span>
+              </div>
+              <div className="stat-item">
+                <span>90% вероятность ≥</span>
+                <span className="item-value">{formatCurrency(percentiles.p10.finalDeposit)}</span>
+              </div>
+              <div className="stat-item">
+                <span>Средняя ROI:</span>
+                <span className="item-value">{percentiles.p50.roi.toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Средняя макс. просадка:</span>
+                <span className="item-value text-danger">{avgMaxDrawdown.toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Шанс удвоения:</span>
+                <span className="item-value">
+                  {(mcResults.allResults.filter(r => r.finalDeposit >= initialDeposit * 2).length / mcResults.iterations * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="chart-container">
+          <h3 className="chart-title">Веер вероятностных сценариев</h3>
+          <div className="chart-body">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" type="number" domain={[1, fanChartData[0].length]} label={{ value: 'Месяц', position: 'insideBottomRight', offset: -10 }} />
+                <YAxis tickFormatter={formatYAxis} />
+                <Tooltip formatter={(value) => [formatCurrency(value), 'Депозит']} />
+                <Legend />
+
+                {/* 10-й процентиль */}
+                <Line
+                  data={fanChartData[0]}
+                  type="monotone"
+                  dataKey="deposit"
+                  name="10% сценарий"
+                  stroke="#ff0000"
+                  dot={false}
+                  strokeWidth={1}
+                />
+
+                {/* 25-й процентиль */}
+                <Line
+                  data={fanChartData[1]}
+                  type="monotone"
+                  dataKey="deposit"
+                  name="25% сценарий"
+                  stroke="#ff8042"
+                  dot={false}
+                  strokeWidth={1.5}
+                />
+
+                {/* Медиана */}
+                <Line
+                  data={fanChartData[2]}
+                  type="monotone"
+                  dataKey="deposit"
+                  name="Медианный сценарий"
+                  stroke="#8884d8"
+                  dot={false}
+                  strokeWidth={2}
+                />
+
+                {/* 75-й процентиль */}
+                <Line
+                  data={fanChartData[3]}
+                  type="monotone"
+                  dataKey="deposit"
+                  name="75% сценарий"
+                  stroke="#82ca9d"
+                  dot={false}
+                  strokeWidth={1.5}
+                />
+
+                {/* 90-й процентиль */}
+                <Line
+                  data={fanChartData[4]}
+                  type="monotone"
+                  dataKey="deposit"
+                  name="90% сценарий"
+                  stroke="#00c49f"
+                  dot={false}
+                  strokeWidth={1}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    );
+  });
 
   // Компонент для отображения Монте-Карло секции с кнопкой
   const MonteCarloSection = () => {
@@ -1778,39 +1780,39 @@ const App = () => {
                     </div>
 
                     <div className="stat-card">
-                    <h3 className="stat-title">Статистика проекции</h3>
-                    <div className="stat-content">
-                      <div className="stat-item">
-                        <span>Общее количество сделок:</span>
-                        <span className="item-value">{formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))}</span>
-                      </div>
-                      <div className="stat-item">
-                        <span>Средний месячный доход:</span>
-                        <span className="item-value">{formatCurrency(projectionResults.monthlyData.slice(1).reduce((sum, month) => sum + month.profit, 0) / (projectionResults.monthlyData.length - 1))}</span>
-                      </div>
-                      <div className="stat-item">
-                        <span>Максимальный риск:</span>
-                        <span className="item-value">{formatCurrency(Math.max(...projectionResults.monthlyData.map(m => m.riskAmount)))}</span>
-                      </div>
-                      <div className="stat-item">
-                        <span>Максимальная просадка:</span>
-                        <span className="item-value text-danger">{projectionResults.maxDrawdown}%</span>
-                      </div>
-                      <div className="stat-item">
-                        <span>Вероятность потери депозита:</span>
-                        <span className={`item-value ${
-                          bankruptcyRisk.probability > 10 ? 'text-danger' : 
-                          bankruptcyRisk.probability > 5 ? 'text-warning' : 'text-success'
-                        }`}>
-                          {bankruptcyRisk.probability}%
-                        </span>
-                      </div>
-                      <div className="stat-item">
-                        <span>Критическая серия SL:</span>
-                        <span className="item-value">{bankruptcyRisk.criticalLosses} убытков</span>
+                      <h3 className="stat-title">Статистика проекции</h3>
+                      <div className="stat-content">
+                        <div className="stat-item">
+                          <span>Общее количество сделок:</span>
+                          <span className="item-value">{formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))}</span>
+                        </div>
+                        <div className="stat-item">
+                          <span>Средний месячный доход:</span>
+                          <span className="item-value">{formatCurrency(projectionResults.monthlyData.slice(1).reduce((sum, month) => sum + month.profit, 0) / (projectionResults.monthlyData.length - 1))}</span>
+                        </div>
+                        <div className="stat-item">
+                          <span>Максимальный риск:</span>
+                          <span className="item-value">{formatCurrency(Math.max(...projectionResults.monthlyData.map(m => m.riskAmount)))}</span>
+                        </div>
+                        <div className="stat-item">
+                          <span>Максимальная просадка:</span>
+                          <span className="item-value text-danger">{projectionResults.maxDrawdown}%</span>
+                        </div>
+                        <div className="stat-item">
+                          <span>Вероятность потери депозита:</span>
+                          <span className={`item-value ${
+                            bankruptcyRisk.probability > 10 ? 'text-danger' : 
+                            bankruptcyRisk.probability > 5 ? 'text-warning' : 'text-success'
+                          }`}>
+                            {bankruptcyRisk.probability}%
+                          </span>
+                        </div>
+                        <div className="stat-item">
+                          <span>Критическая серия SL:</span>
+                          <span className="item-value">{bankruptcyRisk.criticalLosses} убытков</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   </div>
 
                   <div className="warning-box">
@@ -1841,4 +1843,3 @@ const App = () => {
 };
 
 export default App;
-
