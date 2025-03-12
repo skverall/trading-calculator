@@ -28,15 +28,20 @@
 .card {
   background-color: #fff;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  border: 1px solid #e8e8e8;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
+  background-color: #f7f9fc;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
 }
 
 .form-group {
@@ -63,6 +68,7 @@
   font-size: 1rem;
   background-color: #ffffff;
   transition: border-color 0.2s;
+  box-sizing: border-box; /* Важно: включаем border и padding в ширину элемента */
 }
 
 .input:focus {
@@ -71,44 +77,7 @@
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
-/* Стили для формы добавления пары с выровненными полями */
-.form-section-title {
-  margin-top: 0;
-  margin-bottom: 1.25rem;
-  color: #1a1a1a;
-  font-size: 1.2rem;
-  border-bottom: 1px solid #eaeaea;
-  padding-bottom: 0.75rem;
-}
-
-.form-labels-row {
-  display: flex;
-  margin-bottom: 0.5rem;
-}
-
-.form-inputs-row {
-  display: flex;
-  margin-bottom: 1rem;
-}
-
-.form-label-item {
-  flex: 1;
-  padding: 0 0.5rem;
-  font-weight: 500;
-  color: #444;
-}
-
-.form-input-item {
-  flex: 1;
-  padding: 0 0.5rem;
-}
-
-.form-button-container {
-  margin-top: 1rem;
-  text-align: center;
-}
-
-/* Стили для секции сценариев */
+/* Стили для сценариев */
 .scenario-options {
   display: flex;
   gap: 1rem;
@@ -165,7 +134,7 @@
 
 .pair-card.active {
   background-color: #fff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
 }
 
 .pair-header {
@@ -206,6 +175,26 @@
 
 .stat-value {
   font-weight: 500;
+  color: #1890ff;
+}
+
+/* Стили для сворачивания/разворачивания */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  background-color: #f0f5ff;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #1890ff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.expand-icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
   color: #1890ff;
 }
 
@@ -338,19 +327,30 @@
   display: flex;
   border-bottom: 1px solid #d9d9d9;
   margin-bottom: 1rem;
+  background-color: #f7f9fc;
+  border-radius: 8px 8px 0 0;
 }
 
 .tab {
-  padding: 0.75rem 1.5rem;
+  padding: 1rem 2rem;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   transition: all 0.3s ease;
   font-weight: 500;
+  text-align: center;
+  flex: 1;
+}
+
+.tab:hover {
+  background-color: #e6f7ff;
+  color: #1890ff;
 }
 
 .tab.active {
   color: #1890ff;
   border-bottom-color: #1890ff;
+  background-color: #e6f7ff;
+  font-weight: 600;
 }
 
 /* Стили для таблиц */
@@ -544,3 +544,500 @@
 .warning-list li {
   margin-bottom: 0.5rem;
 }
+
+/* Стили для карточек пар */
+.pair-actions {
+  display: flex;
+  align-items: center;
+}
+
+.remove-button {
+  background: none;
+  border: none;
+  color: #ff4d4f;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.pair-card:hover .remove-button {
+  opacity: 1;
+}
+
+/* Стили для формы добавления новой пары */
+.add-pair-form {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: #f7f7f7;
+  border-radius: 0.5rem;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-row .form-group {
+  flex: 1 1 200px;
+  min-width: 200px;
+}
+
+.color-input {
+  width: 100%;
+  height: 38px;
+  padding: 0.25rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.button-primary {
+  background-color: #1890ff;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:hover {
+  background-color: #40a9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.import-export-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.button-secondary {
+  background-color: #495057;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button-secondary:hover {
+  background-color: #343a40;
+}
+
+.file-input-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2a9d4f;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+  transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.file-input-label:hover {
+  background-color: #1e7e34;
+}
+
+.file-input {
+  display: none;
+}
+
+.monte-carlo-section {
+  margin-top: 1rem;
+  border-top: 2px solid #e6f7ff;
+  padding-top: 1.5rem;
+  text-align: center;
+}
+
+.monte-carlo-button {
+  padding: 0.9rem 2rem;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, #0060df 0%, #0042a5 100%);
+  border-radius: 6px;
+  min-width: 300px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+  border: none;
+  color: white;
+  font-weight: 500;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.monte-carlo-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #0070ff 0%, #0050c5 100%);
+}
+
+/* Стили для результатов Монте-Карло */
+.monte-carlo-results {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f0f9ff;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid #bae7ff;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #0050b3;
+  text-align: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #91d5ff;
+}
+
+/* Стили для формы добавления пары с выровненными полями */
+.form-section-title {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: #1a1a1a;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 0.75rem;
+}
+
+.form-labels-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.form-inputs-row {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.form-label-item {
+  flex: 1;
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-input-item {
+  flex: 1;
+  padding: 0 0.5rem;
+}
+
+.form-button-container {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Стили для темной темы */
+:root {
+  --primary-color: #1890ff;
+  --primary-hover: #40a9ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --orange-color: #fa8c16;
+  --danger-color: #f5222d;
+  --bg-color: #ffffff;
+  --card-bg: #ffffff;
+  --form-bg: #f7f9fc;
+  --text-color: #333;
+  --secondary-text: #666;
+  --border-color: #e8e8e8;
+  --chart-bg: #f5f5f5;
+  --header-bg: #f0f5ff;
+  --tab-bg: #f7f9fc;
+  --active-tab-bg: #e6f7ff;
+  --info-box-bg: #e6f7ff;
+  --info-box-border: #91d5ff;
+  --milestone-bg: #f0f7ff;
+  --milestone-border: #d0e3ff;
+  --warning-bg: #fff2e8;
+  --warning-border: #ffbb96;
+  --warning-color: #d4380d;
+  --table-header-bg: #f5f5f5;
+  --table-odd-bg: #f9f9f9;
+  --table-even-bg: #ffffff;
+  --blue-gradient-start: #1890ff;
+  --blue-gradient-end: #096dd9;
+  --green-gradient-start: #52c41a;
+  --green-gradient-end: #389e0d;
+  --purple-gradient-start: #722ed1;
+  --purple-gradient-end: #531dab;
+  --section-shadow: rgba(0, 0, 0, 0.12);
+  --pairs-bg: #f0f5ff;
+  --pairs-border: #d6e4ff;
+}
+
+.dark-theme {
+  --primary-color: #177ddc;
+  --primary-hover: #3698eb;
+  --success-color: #49aa19;
+  --warning-color: #d89614;
+  --orange-color: #d87a16;
+  --danger-color: #d32029;
+  --bg-color: #141414;
+  --card-bg: #1f1f1f;
+  --form-bg: #101010;
+  --text-color: #e0e0e0;
+  --secondary-text: #a0a0a0;
+  --border-color: #303030;
+  --chart-bg: #2a2a2a;
+  --header-bg: #141d2b;
+  --tab-bg: #101010;
+  --active-tab-bg: #101a30;
+  --info-box-bg: #112233;
+  --info-box-border: #164c7e;
+  --milestone-bg: #112240;
+  --milestone-border: #164c7e;
+  --warning-bg: #2a1215;
+  --warning-border: #5e2221;
+  --warning-color: #e84749;
+  --table-header-bg: #202020;
+  --table-odd-bg: #151515;
+  --table-even-bg: #202020;
+  --blue-gradient-start: #177ddc;
+  --blue-gradient-end: #1062b9;
+  --green-gradient-start: #49aa19;
+  --green-gradient-end: #306f00;
+  --purple-gradient-start: #642ab5;
+  --purple-gradient-end: #4c1a90;
+  --section-shadow: rgba(0, 0, 0, 0.5);
+  --pairs-bg: #141d2b;
+  --pairs-border: #303030;
+}
+
+/* Исправление для проблемы 1: Раздел торговых пар в темной теме */
+.pairs-grid {
+  background-color: var(--pairs-bg);
+  border-color: var(--pairs-border);
+}
+
+/* Исправление для проблемы 2: Поля ввода должны оставаться белыми в темной теме */
+.dark-theme .input,
+.dark-theme .color-input,
+.dark-theme input[type="text"],
+.dark-theme input[type="number"] {
+  background-color: #ffffff;
+  color: #333;
+  border-color: #666;
+}
+
+body, .container {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: 0 3px 10px var(--section-shadow);
+}
+
+.header .title {
+  color: var(--text-color);
+}
+
+.header .subtitle {
+  color: var(--secondary-text);
+}
+
+.form-grid {
+  background-color: var(--form-bg);
+}
+
+.form-group {
+  background-color: var(--card-bg);
+}
+
+.label {
+  color: var(--text-color);
+}
+
+.section-header {
+  background-color: var(--header-bg);
+  color: var(--text-color);
+}
+
+.table th {
+  background-color: var(--table-header-bg);
+  color: var(--text-color);
+}
+
+.row-even {
+  background-color: var(--table-even-bg);
+}
+
+.row-odd {
+  background-color: var(--table-odd-bg);
+}
+
+.tabs {
+  background-color: var(--tab-bg);
+  border-color: var(--border-color);
+}
+
+.tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+  background-color: var(--active-tab-bg);
+}
+
+.blue-gradient {
+  background: linear-gradient(135deg, var(--blue-gradient-start), var(--blue-gradient-end));
+}
+
+.green-gradient {
+  background: linear-gradient(135deg, var(--green-gradient-start), var(--green-gradient-end));
+}
+
+.purple-gradient {
+  background: linear-gradient(135deg, var(--purple-gradient-start), var(--purple-gradient-end));
+}
+
+.info-box {
+  background-color: var(--info-box-bg);
+  border-color: var(--info-box-border);
+}
+
+.warning-box {
+  background-color: var(--warning-bg);
+  border-color: var(--warning-border);
+}
+
+.warning-title {
+  color: var(--warning-color);
+}
+
+.milestone-section {
+  background-color: var(--milestone-bg);
+  border-color: var(--milestone-border);
+}
+
+.milestone-header {
+  color: var(--primary-color);
+  background-color: var(--card-bg);
+}
+
+.milestone-even {
+  background-color: var(--table-even-bg);
+}
+
+.milestone-odd {
+  background-color: var(--table-odd-bg);
+}
+
+/* Улучшенные стили для карточек пар */
+.pair-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.05) 100%);
+}
+
+.pair-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.pair-header {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.pair-stats {
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.pair-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.active-status {
+  background: linear-gradient(135deg, #52c41a, #389e0d);
+}
+
+.inactive-status {
+  background: linear-gradient(135deg, #f5f5f5, #d9d9d9);
+}
+
+.pair-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Стили для переключателя темы */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 3px 10px var(--section-shadow);
+  transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+}
+
+.theme-toggle svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--text-color);
+}
+
+/* Стили для подвала */
+.footer {
+  text-align: center;
+  padding: 2rem 0;
+  margin-top: 3rem;
+  border-top: 1px solid var(--border-color);
+  position: relative;
+}
+
+/* Импорт шрифта Pacifico для подписи автора */
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
