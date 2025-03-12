@@ -1166,7 +1166,6 @@ body, .container {
   line-height: 1.5;
 }
 
-/* Адаптивные изменения для мобильных устройств */
 /* Стили для кнопки расчета */
 .calculate-button-container {
   display: flex;
@@ -1226,23 +1225,111 @@ body, .container {
   opacity: 0.9;
 }
 
+/* Добавление красного градиента */
+.red-gradient {
+  background: linear-gradient(135deg, var(--red-gradient-start), var(--red-gradient-end));
+}
+
+/* Переменные цветов */
+:root {
+  --primary-color: #1890ff;
+  --primary-hover: #40a9ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --orange-color: #fa8c16;
+  --danger-color: #f5222d;
+  --bg-color: #ffffff;
+  --card-bg: #ffffff;
+  --form-bg: #f7f9fc;
+  --text-color: #333;
+  --secondary-text: #666;
+  --border-color: #e8e8e8;
+  --chart-bg: #f5f5f5;
+  --header-bg: #f0f5ff;
+  --tab-bg: #f7f9fc;
+  --active-tab-bg: #e6f7ff;
+  --info-box-bg: #e6f7ff;
+  --info-box-border: #91d5ff;
+  --milestone-bg: #f0f7ff;
+  --milestone-border: #d0e3ff;
+  --warning-bg: #fff2e8;
+  --warning-border: #ffbb96;
+  --warning-color: #d4380d;
+  --table-header-bg: #f5f5f5;
+  --table-odd-bg: #f9f9f9;
+  --table-even-bg: #ffffff;
+  --blue-gradient-start: #1890ff;
+  --blue-gradient-end: #096dd9;
+  --green-gradient-start: #52c41a;
+  --green-gradient-end: #389e0d;
+  --purple-gradient-start: #722ed1;
+  --purple-gradient-end: #531dab;
+  --red-gradient-start: #ff4d4f;
+  --red-gradient-end: #cf1322;
+  --section-shadow: rgba(0, 0, 0, 0.12);
+  --pairs-bg: #f0f5ff;
+  --pairs-border: #d6e4ff;
+}
+
+/* Темная тема */
+.dark-theme {
+  --primary-color: #177ddc;
+  --primary-hover: #3698eb;
+  --success-color: #49aa19;
+  --warning-color: #d89614;
+  --orange-color: #d87a16;
+  --danger-color: #d32029;
+  --bg-color: #141414;
+  --card-bg: #1f1f1f;
+  --form-bg: #101010;
+  --text-color: #e0e0e0;
+  --secondary-text: #a0a0a0;
+  --border-color: #303030;
+  --chart-bg: #2a2a2a;
+  --header-bg: #141d2b;
+  --tab-bg: #101010;
+  --active-tab-bg: #101a30;
+  --info-box-bg: #112233;
+  --info-box-border: #164c7e;
+  --milestone-bg: #112240;
+  --milestone-border: #164c7e;
+  --warning-bg: #2a1215;
+  --warning-border: #5e2221;
+  --warning-color: #e84749;
+  --table-header-bg: #202020;
+  --table-odd-bg: #151515;
+  --table-even-bg: #202020;
+  --blue-gradient-start: #177ddc;
+  --blue-gradient-end: #1062b9;
+  --green-gradient-start: #49aa19;
+  --green-gradient-end: #306f00;
+  --purple-gradient-start: #642ab5;
+  --purple-gradient-end: #4c1a90;
+  --red-gradient-start: #ff4d4f;
+  --red-gradient-end: #a8071a;
+  --section-shadow: rgba(0, 0, 0, 0.5);
+  --pairs-bg: #141d2b;
+  --pairs-border: #303030;
+}
+
+/* Адаптивные изменения для мобильных устройств */
 @media (max-width: 768px) {
   .settings-controls {
     top: auto;
     bottom: 20px;
     right: 20px;
   }
-  
+
   .theme-toggle {
     top: auto;
     bottom: 20px;
     left: 20px;
   }
-  
+
   .pairs-grid.smaller-pairs {
     grid-template-columns: 1fr;
   }
-  
+
   .calculate-button {
     width: 100%;
     padding: 0.8rem 1rem;
