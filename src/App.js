@@ -41,6 +41,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('projection'); // Установим 'projection' по умолчанию
   const [scenarioType, setScenarioType] = useState('realistic');
   const [monthlyDeposit, setMonthlyDeposit] = useState(0); // Новое состояние для ежемесячного пополнения
+  const [isCalculating, setIsCalculating] = useState(false); // Состояние для кнопки расчета
 
   // Состояния для управления тикерами
   const [pairsExpanded, setPairsExpanded] = useState(true); // Список пар развернут по умолчанию (было false)
@@ -324,18 +325,19 @@ const App = () => {
 
   // Исправленный расчет риска в зависимости от размера депозита
   const calculateRiskPercent = (deposit, userRiskPercent = initialRiskPercent) => {
-    // Используем указанный пользователем начальный процент риска, когда депозит ниже 1000
+    // Для начального депозита всегда используем точное значение, заданное пользователем
+    if (deposit === initialDeposit) return userRiskPercent;
+    
+    // Для последующих расчетов используем ступенчатое снижение
     if (deposit < 1000) return userRiskPercent;
-
-    // Применяем такое же масштабированное снижение, но начиная с пользовательского ввода
-    if (deposit < 2000) return Math.min(8.0, userRiskPercent * 0.8);
-    if (deposit < 3000) return Math.min(7.0, userRiskPercent * 0.7);
-    if (deposit < 5000) return Math.min(6.0, userRiskPercent * 0.6);
-    if (deposit < 10000) return Math.min(5.0, userRiskPercent * 0.5);
-    if (deposit < 20000) return Math.min(4.0, userRiskPercent * 0.4);
-    if (deposit < 50000) return Math.min(3.5, userRiskPercent * 0.35);
-    if (deposit < 75000) return Math.min(3.0, userRiskPercent * 0.3);
-    return Math.min(2.5, userRiskPercent * 0.25);
+    if (deposit < 2000) return userRiskPercent * 0.9;
+    if (deposit < 3000) return userRiskPercent * 0.8;
+    if (deposit < 5000) return userRiskPercent * 0.7;
+    if (deposit < 10000) return userRiskPercent * 0.6;
+    if (deposit < 20000) return userRiskPercent * 0.5;
+    if (deposit < 50000) return userRiskPercent * 0.4;
+    if (deposit < 75000) return userRiskPercent * 0.35;
+    return userRiskPercent * 0.3;
   };
 
   // Исправленный компонент таблицы проекции
@@ -856,16 +858,28 @@ const App = () => {
     };
   }, [scenarioType, monthlyDeposit, initialRiskPercent]);
 
-  // Рассчитываем все при изменении параметров
-  useEffect(() => {
+  // Функция для запуска расчетов
+  const calculateProjection = () => {
     if (initialDeposit > 0 && targetDeposit > initialDeposit) {
-      const results = generateProjection(initialDeposit, targetDeposit, tradingPairs);
-      setProjectionResults(results);
-      setGrowthChartData(results.monthlyData);
-      setPairPerformanceData(results.pairResults);
-      setMilestones(results.milestones);
+      setIsCalculating(true);
+      // Небольшая задержка для наглядности процесса и предотвращения UI блокировки
+      setTimeout(() => {
+        const results = generateProjection(initialDeposit, targetDeposit, tradingPairs);
+        setProjectionResults(results);
+        setGrowthChartData(results.monthlyData);
+        setPairPerformanceData(results.pairResults);
+        setMilestones(results.milestones);
+        setIsCalculating(false);
+      }, 300);
+    } else {
+      alert('Пожалуйста, убедитесь что начальный депозит больше нуля и целевой депозит больше начального');
     }
-  }, [initialDeposit, targetDeposit, initialRiskPercent, tradingPairs, generateProjection]);
+  };
+  
+  // Запускаем первоначальный расчет при загрузке компонента
+  useEffect(() => {
+    calculateProjection();
+  }, []);
 
   // Переключение активности пары
   const togglePairActive = (pairName) => {
@@ -1435,6 +1449,21 @@ const App = () => {
               className="input"
             />
           </div>
+        </div>
+        
+        <div className="calculate-button-container">
+          <button 
+            className={`calculate-button ${isCalculating ? 'calculating' : ''}`}
+            onClick={calculateProjection}
+            disabled={isCalculating}
+          >
+            {isCalculating ? (
+              <>
+                <span className="loading-spinner"></span>
+                Выполняется расчет...
+              </>
+            ) : "Рассчитать"}
+          </button>
         </div>
 
         <div className="form-group">
