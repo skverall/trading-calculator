@@ -60,40 +60,62 @@ const App = () => {
     return Math.pow(lossrate, count) * 100;
   };
 
-  // Компонент для отображения вероятностей стоп-лоссов
+  // Функция для расчета наиболее вероятного количества стоп-лоссов подряд
+  const calculateMostProbableStopLosses = (winrate) => {
+    const lossRate = (100 - winrate) / 100;
+    const winRate = winrate / 100;
+    
+    // Используем математическое ожидание для геометрического распределения
+    // E(X) = 1/p где p - вероятность успеха (в нашем случае winRate)
+    const expectedRuns = Math.round(1 / winRate);
+    
+    // Наиболее вероятная длина серии проигрышей (мода геометрического распределения)
+    // Для геометрического распределения мода = 1
+    const mostProbable = Math.floor(Math.log(1 - 0.5) / Math.log(lossRate)) || 1;
+    
+    return {
+      expected: Math.min(expectedRuns, 10), // Ограничиваем верхний предел
+      mostProbable: mostProbable
+    };
+  };
+
+  // Обновленный компонент для отображения вероятностей стоп-лоссов
   const StopLossProbabilityCard = memo(({ tradingPairs }) => {
     return (
       <div className="stat-card">
         <h3 className="stat-title">Вероятность стоп-лоссов подряд</h3>
         <div className="stat-content">
-          {tradingPairs.filter(p => p.active).map(pair => (
-            <div key={`${pair.pair}-sl3`} className="stat-item">
-              <div className="item-name">
-                <span className="color-indicator" style={{backgroundColor: pair.color}}></span>
-                <span>{pair.pair}: 3+ подряд</span>
-              </div>
-              <span className={`item-value ${calculateConsecutiveStopLossProbability(pair.winrate, 3) > 25 ? 'text-danger' : 'text-warning'}`}>
-                {calculateConsecutiveStopLossProbability(pair.winrate, 3).toFixed(1)}%
-              </span>
-            </div>
-          ))}
-          {tradingPairs.filter(p => p.active).map(pair => (
-            <div key={`${pair.pair}-sl5`} className="stat-item">
-              <div className="item-name">
-                <span className="color-indicator" style={{backgroundColor: pair.color}}></span>
-                <span>{pair.pair}: 5+ подряд</span>
-              </div>
-              <span className={`item-value ${calculateConsecutiveStopLossProbability(pair.winrate, 5) > 15 ? 'text-danger' : 'text-warning'}`}>
-                {calculateConsecutiveStopLossProbability(pair.winrate, 5).toFixed(1)}%
-              </span>
-            </div>
-          ))}
+          {tradingPairs.filter(p => p.active).map(pair => {
+            const stopLossStats = calculateMostProbableStopLosses(pair.winrate);
+            return (
+              <React.Fragment key={`${pair.pair}-sl-stats`}>
+                <div className="stat-item">
+                  <div className="item-name">
+                    <span className="color-indicator" style={{backgroundColor: pair.color}}></span>
+                    <span>{pair.pair}: 3+ подряд</span>
+                  </div>
+                  <span className={`item-value ${calculateConsecutiveStopLossProbability(pair.winrate, 3) > 25 ? 'text-danger' : 'text-warning'}`}>
+                    {calculateConsecutiveStopLossProbability(pair.winrate, 3).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <div className="item-name">
+                    <span className="color-indicator" style={{backgroundColor: pair.color}}></span>
+                    <span>{pair.pair}: ср./вер. SL</span>
+                  </div>
+                  <span className="item-value text-primary">
+                    {stopLossStats.expected}/{stopLossStats.mostProbable}
+                  </span>
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     );
   });
 
-  // Обновлённый список торговых пар (ATOMUSDT удалён)
+  // Обновлённый список торговых пар
   const [tradingPairs, setTradingPairs] = useState([
     { pair: 'XAIUSDT', active: true, ev: 0.575, winrate: 31.5, rr: 4, allocationPercent: 31.3, monthlyTrades: 42, color: '#FF8042' },
     { pair: 'PEOPLEUSDT', active: true, ev: 0.528, winrate: 38.2, rr: 3, allocationPercent: 28.8, monthlyTrades: 51, color: '#00C49F' },
@@ -104,6 +126,7 @@ const App = () => {
   // Состояния для Монте-Карло симуляции
   const [monteCarloResults, setMonteCarloResults] = useState(null);
   const [showMonteCarlo, setShowMonteCarlo] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   // Результаты расчетов
   const [projectionResults, setProjectionResults] = useState(null);
@@ -119,6 +142,8 @@ const App = () => {
     iterations = 1000,
     userRiskPercent = initialRiskPercent
   ) => {
+    setIsSimulating(true);
+    
     // Результаты всех итераций
     const results = [];
 
@@ -127,6 +152,11 @@ const App = () => {
       let deposit = initialDeposit;
       let monthlyResults = [];
 
+      // Текущий пик (для расчета просадки)
+      let peakValue = initialDeposit;
+      let currentDrawdown = 0;
+      let maxDrawdown = 0;
+      
       // Для каждого месяца
       for (let month = 0; month < months; month++) {
         // Текущий процент риска - используем процент риска, указанный пользователем
@@ -140,7 +170,8 @@ const App = () => {
             month: month + 1,
             deposit,
             profit: 0,
-            riskPercent
+            riskPercent,
+            drawdown: currentDrawdown
           });
           continue;
         }
@@ -200,13 +231,23 @@ const App = () => {
         // Более реалистичное ограничение для предотвращения нереалистичного роста
         // Ограничиваем рост, чтобы отразить реальные факторы риска, не учтенные в модели
         deposit = Math.min(deposit, initialDeposit * 100);
+        
+        // Расчет просадки
+        if (deposit > peakValue) {
+          peakValue = deposit;
+          currentDrawdown = 0;
+        } else {
+          currentDrawdown = (peakValue - deposit) / peakValue * 100;
+          maxDrawdown = Math.max(maxDrawdown, currentDrawdown);
+        }
 
         // Сохраняем результат месяца
         monthlyResults.push({
           month: month + 1,
           deposit,
           profit: netProfit,
-          riskPercent
+          riskPercent,
+          drawdown: currentDrawdown
         });
       }
 
@@ -215,7 +256,8 @@ const App = () => {
         finalDeposit: deposit,
         monthlyResults,
         roi: (deposit / initialDeposit - 1) * 100,
-        cagr: (Math.pow(deposit / initialDeposit, 1 / (months / 12)) - 1) * 100
+        cagr: (Math.pow(deposit / initialDeposit, 1 / (months / 12)) - 1) * 100,
+        maxDrawdown: maxDrawdown
       });
     }
 
@@ -235,10 +277,16 @@ const App = () => {
 
     // Рассчитываем среднее значение
     const avgFinalDeposit = results.reduce((sum, result) => sum + result.finalDeposit, 0) / iterations;
+    
+    // Рассчитываем среднюю максимальную просадку
+    const avgMaxDrawdown = results.reduce((sum, result) => sum + result.maxDrawdown, 0) / iterations;
 
+    setIsSimulating(false);
+    
     return {
       percentiles,
       avgFinalDeposit,
+      avgMaxDrawdown,
       iterations,
       allResults: results
     };
@@ -311,6 +359,7 @@ const App = () => {
               <th>Сделок</th>
               <th>Прибыль</th>
               <th>Комиссии</th>
+              <th>Просадка (%)</th>
               <th>Рост</th>
             </tr>
           </thead>
@@ -347,6 +396,9 @@ const App = () => {
                   </td>
                   <td className="text-danger">
                     {month.month === 0 ? '-' : `-${formatCurrency(month.fees)}`}
+                  </td>
+                  <td className={`${month.drawdown > 10 ? 'text-danger' : month.drawdown > 5 ? 'text-warning' : ''}`}>
+                    {month.month === 0 ? '-' : month.drawdown.toFixed(1) + '%'}
                   </td>
                   <td className={`font-bold ${
                     growthPercent === '-' ? '' :
@@ -407,7 +459,7 @@ const App = () => {
   const MonteCarloResults = memo(({ mcResults, formatCurrency, formatYAxis, initialDeposit }) => {
     if (!mcResults) return null;
 
-    const { percentiles, avgFinalDeposit, period } = mcResults;
+    const { percentiles, avgFinalDeposit, avgMaxDrawdown, period } = mcResults;
     const timeDescription = period ? `за ${period.months} месяцев (${period.years} лет)` : '';
 
     // Данные для графика персентилей
@@ -471,6 +523,10 @@ const App = () => {
               <div className="stat-item">
                 <span>Средняя ROI:</span>
                 <span className="item-value">{percentiles.p50.roi.toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Средняя макс. просадка:</span>
+                <span className="item-value text-danger">{avgMaxDrawdown.toFixed(1)}%</span>
               </div>
               <div className="stat-item">
                 <span>Шанс удвоения:</span>
@@ -566,7 +622,8 @@ const App = () => {
           target: milestoneTargets[i],
           months: monthIndex + 1,
           days: Math.ceil((monthIndex + 1) * 30.5),
-          date: new Date(Date.now() + (monthIndex + 1) * 30.5 * 24 * 60 * 60 * 1000).toLocaleDateString()
+          date: new Date(Date.now() + (monthIndex + 1) * 30.5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          riskPercent: calculateRiskPercent(milestoneTargets[i])
         });
       }
     }
@@ -711,7 +768,7 @@ const App = () => {
       // Обновляем депозит
       currentDeposit += netMonthProfit;
 
-      // ИСПРАВЛЕННЫЙ расчет просадки
+      // УЛУЧШЕННЫЙ расчет просадки
       if (currentDeposit > peakValue) {
         // Новый пик, сбрасываем текущую просадку
         peakValue = currentDeposit;
@@ -778,6 +835,7 @@ const App = () => {
         months: months,
         days: Math.ceil(months * 30.5),
         date: new Date(Date.now() + months * 30.5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        riskPercent: calculateRiskPercent(currentDeposit),
         note: 'Конец прогноза'
       });
     }
@@ -1008,7 +1066,7 @@ const App = () => {
     return 'text-danger';
   };
 
-  // Рендер таблицы с ключевыми этапами
+  // Улучшенный рендер таблицы с ключевыми этапами
   const renderMilestonesTable = () => {
     if (!milestones || milestones.length === 0) return <div className="text-center">Недостаточно данных для отображения этапов</div>;
 
@@ -1017,23 +1075,49 @@ const App = () => {
         <table className="table milestone-table">
           <thead>
             <tr>
-              <th>Целевой депозит</th>
-              <th>Месяцев</th>
-              <th>Дней</th>
-              <th>Ожидаемая дата</th>
-              <th>Примечание</th>
+              <th>Депозит</th>
+              <th>Срок (мес.)</th>
+              <th>Дата достижения</th>
+              <th>Риск на сделку</th>
+              <th>Статус</th>
             </tr>
           </thead>
           <tbody>
-            {milestones.map((milestone, index) => (
-              <tr key={index} className={index % 2 === 0 ? "milestone-even" : "milestone-odd"}>
-                <td className="font-bold">{formatCurrency(milestone.target)}</td>
-                <td>{milestone.months}</td>
-                <td className="font-bold">{milestone.days}</td>
-                <td className="milestone-date">{milestone.date}</td>
-                <td>{milestone.note || (milestone.target === targetDeposit ? 'Целевой депозит достигнут!' : '')}</td>
-              </tr>
-            ))}
+            {milestones.map((milestone, index) => {
+              // Определим статус этапа
+              const now = new Date();
+              const milestoneDate = new Date(milestone.date);
+              let status = '';
+              let statusClass = '';
+              
+              if (milestone.note === 'Конец прогноза') {
+                status = 'Прогноз';
+                statusClass = 'text-warning';
+              } else if (milestone.target === targetDeposit) {
+                status = 'Цель';
+                statusClass = 'text-success';
+              } else if (milestoneDate < now) {
+                status = 'Выполнено';
+                statusClass = 'text-primary';
+              } else {
+                status = 'Ожидается';
+                statusClass = '';
+              }
+              
+              return (
+                <tr key={index} className={index % 2 === 0 ? "milestone-even" : "milestone-odd"}>
+                  <td className="font-bold">{formatCurrency(milestone.target)}</td>
+                  <td>{milestone.months}</td>
+                  <td className="milestone-date">{milestone.date}</td>
+                  <td className={getRiskColor(milestone.riskPercent)}>
+                    {milestone.riskPercent ? milestone.riskPercent.toFixed(1) + '%' : '-'}
+                  </td>
+                  <td className={statusClass}>
+                    {status}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1077,9 +1161,9 @@ const App = () => {
         </div>
 
         <div className="dashboard-card purple-gradient">
-          <h3>Статистика сделок</h3>
+          <h3>Статистика торговли</h3>
           <div className="value">
-            {formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))}
+            {formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))} сделок
           </div>
           <div className="subtext">
             Средний размер позиции: ~{formatCurrency(projectionResults.monthlyData[Math.floor(projectionResults.monthlyData.length / 2)]?.riskAmount || 0)}
@@ -1156,8 +1240,80 @@ const App = () => {
     );
   };
 
+  // Компонент для отображения Монте-Карло секции с кнопкой
+  const MonteCarloSection = () => {
+    return (
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <h3 className="section-title">Монте-Карло симуляция</h3>
+        <div className="text-center" style={{ padding: '1rem' }}>
+          <p className="info-text">
+            Запустите симуляцию для анализа 1000 возможных сценариев торговли на протяжении 1 года
+          </p>
+          <button
+            className="button button-primary monte-carlo-button"
+            onClick={() => {
+              setIsSimulating(true);
+              setTimeout(() => {
+                const monteCarloMonths = 12; // 1 год (было 24 месяца)
+                const iterations = 1000;
+                const results = runMonteCarloSimulation(
+                  initialDeposit,
+                  tradingPairs,
+                  monteCarloMonths,
+                  iterations,
+                  initialRiskPercent
+                );
+                setMonteCarloResults({
+                  ...results,
+                  period: {
+                    months: monteCarloMonths,
+                    years: (monteCarloMonths / 12).toFixed(1)
+                  }
+                });
+                setShowMonteCarlo(true);
+                setIsSimulating(false);
+              }, 300);
+            }}
+            disabled={isSimulating}
+          >
+            {isSimulating ? (
+              <span>
+                <span className="loading-spinner"></span> Выполняется расчёт...
+              </span>
+            ) : (
+              "Запустить Монте-Карло симуляцию (1 год)"
+            )}
+          </button>
+        </div>
+        {showMonteCarlo && monteCarloResults && (
+          <MonteCarloResults
+            mcResults={monteCarloResults}
+            formatCurrency={formatCurrency}
+            formatYAxis={formatYAxis}
+            initialDeposit={initialDeposit}
+          />
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container">
+      {/* Кнопки импорта/экспорта настроек (перенесены в угол экрана) */}
+      <div className="settings-controls">
+        <div onClick={exportSettings} className="settings-button" title="Экспорт настроек">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/>
+          </svg>
+        </div>
+        <label className="settings-button" title="Импорт настроек">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z" style={{transform: 'rotate(180deg)', transformOrigin: 'center'}}/>
+          </svg>
+          <input type="file" accept=".json" onChange={importSettings} className="file-input" />
+        </label>
+      </div>
+
       {/* Кнопка переключения темы */}
       <div className="theme-toggle" onClick={toggleTheme}>
         {darkMode ? (
@@ -1171,7 +1327,7 @@ const App = () => {
         )}
       </div>
 
-      {/* Улучшенный заголовок с фоном */}
+      {/* Улучшенный заголовок с фоном и именем автора */}
       <div className="header" style={{
         background: `linear-gradient(135deg, var(--blue-gradient-start) 0%, var(--blue-gradient-end) 100%)`,
         padding: '2rem',
@@ -1195,6 +1351,20 @@ const App = () => {
           backgroundPosition: '0 0, 10px 10px',
           zIndex: 1
         }}></div>
+
+        {/* Добавляем имя автора в верхнем правом углу шапки */}
+        <div style={{
+          position: 'absolute',
+          top: '15px',
+          right: '20px',
+          fontFamily: "'Pacifico', cursive",
+          fontSize: '1.2rem',
+          color: 'rgba(255, 255, 255, 0.9)',
+          zIndex: 5,
+          textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        }}>
+          by AydMaxx
+        </div>
 
         <div style={{ position: 'relative', zIndex: 2 }}>
           <h2 className="title" style={{
@@ -1267,18 +1437,6 @@ const App = () => {
           </div>
         </div>
 
-        <div className="form-group import-export">
-          <div className="import-export-buttons">
-            <button onClick={exportSettings} className="button button-secondary">
-              Экспорт настроек
-            </button>
-            <label className="file-input-label">
-              Импорт настроек
-              <input type="file" accept=".json" onChange={importSettings} className="file-input" />
-            </label>
-          </div>
-        </div>
-
         <div className="form-group">
           <label className="label">Сценарий рынка</label>
           <div className="scenario-options">
@@ -1306,7 +1464,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Торговые пары со свертыванием/развертыванием */}
+        {/* Торговые пары со свертыванием/развертыванием (меньшего размера) */}
         <div className="form-group">
           <div className="section-header" onClick={() => setPairsExpanded(!pairsExpanded)}>
             <label className="label">Торговые пары</label>
@@ -1315,7 +1473,7 @@ const App = () => {
 
           {pairsExpanded && (
             <>
-              <div className="pairs-grid">
+              <div className="pairs-grid smaller-pairs">
                 {tradingPairs.map((pair, index) => (
                   <div
                     key={index}
@@ -1332,7 +1490,7 @@ const App = () => {
                             togglePairActive(pair.pair);
                           }}
                         >
-                          {pair.active ? 'Активна' : 'Отключена'}
+                          {pair.active ? 'Активна' : 'Выкл.'}
                         </span>
                         <button
                           className="remove-button"
@@ -1359,33 +1517,6 @@ const App = () => {
             </>
           )}
         </div>
-
-        <div className="form-group monte-carlo-section">
-          <button
-            className="button button-primary monte-carlo-button"
-            onClick={() => {
-              const monteCarloMonths = 12; // 1 год (было 24 месяца)
-              const iterations = 1000;
-              const results = runMonteCarloSimulation(
-                initialDeposit,
-                tradingPairs,
-                monteCarloMonths,
-                iterations,
-                initialRiskPercent
-              );
-              setMonteCarloResults({
-                ...results,
-                period: {
-                  months: monteCarloMonths,
-                  years: (monteCarloMonths / 12).toFixed(1)
-                }
-              });
-              setShowMonteCarlo(true);
-            }}
-          >
-            Запустить Монте-Карло симуляцию (1 год)
-          </button>
-        </div>
       </div>
 
       {projectionResults && (
@@ -1410,14 +1541,8 @@ const App = () => {
 
           {renderPairContributionChart()}
 
-          {showMonteCarlo && monteCarloResults && (
-            <MonteCarloResults
-              mcResults={monteCarloResults}
-              formatCurrency={formatCurrency}
-              formatYAxis={formatYAxis}
-              initialDeposit={initialDeposit}
-            />
-          )}
+          {/* Перенесенная секция Монте-Карло */}
+          <MonteCarloSection />
 
           <div className="card tabs-container">
             <div className="tabs">
@@ -1541,27 +1666,6 @@ const App = () => {
           </div>
         </>
       )}
-
-      {/* Добавляем подвал с указанием автора */}
-     <div className="footer" style={{
-        textAlign: 'center',
-        padding: '2rem 0',
-        marginTop: '3rem',
-        borderTop: `1px solid var(--border-color)`,
-        position: 'relative'
-      }}>
-        <div style={{
-          fontFamily: "'Pacifico', cursive",
-          fontSize: '1.3rem',
-          background: `linear-gradient(135deg, var(--blue-gradient-start) 0%, var(--purple-gradient-start) 100%)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          display: 'inline-block',
-          position: 'relative'
-        }}>
-          by Aydmaxx
-        </div>
-      </div>
     </div>
   );
 };
