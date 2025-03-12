@@ -1,4 +1,28 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+// Функция расчета распределения риска
+  const calculateRiskAllocation = (deposit, pairsState) => {
+    const activePairs = pairsState.filter(pair => pair.active);
+    if (activePairs.length === 0) return [];
+
+    const riskPercent = calculateRiskPercent(deposit, initialRiskPercent);
+    const totalRiskAmount = (deposit * riskPercent) / 100;
+
+    // Рассчитаем общее EV для активных пар
+    const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
+
+    // Распределим риск пропорционально EV
+    return pairsState.map(pair => {
+      if (!pair.active) return { ...pair, riskAmount: 0 };
+
+      const allocationPercent = (pair.ev / totalEV) * 100;
+      const riskAmount = (allocationPercent / 100) * totalRiskAmount;
+
+      return {
+        ...pair,
+        allocationPercent: parseFloat(allocationPercent.toFixed(1)),
+        riskAmount: parseFloat(riskAmount.toFixed(2))
+      };
+    });
+  };import React, { useState, useEffect, useCallback, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 // Основной компонент приложения
@@ -613,7 +637,7 @@ const App = () => {
     );
   });
 
-  // Функция для проверки и добавления промежуточных целей (вынесена для решения проблемы с ESLint)
+  // Функция для проверки и добавления промежуточных целей с привязкой к целевому депозиту
   const checkAndAddMilestone = (currentDeposit, milestoneTargets, milestoneResults, monthIndex) => {
     const updatedMilestones = [...milestoneResults];
 
@@ -632,32 +656,116 @@ const App = () => {
 
     return updatedMilestones;
   };
-
-  // Функция расчета распределения риска
-  const calculateRiskAllocation = (deposit, pairsState) => {
-    const activePairs = pairsState.filter(pair => pair.active);
-    if (activePairs.length === 0) return [];
-
-    const riskPercent = calculateRiskPercent(deposit, initialRiskPercent);
-    const totalRiskAmount = (deposit * riskPercent) / 100;
-
-    // Рассчитаем общее EV для активных пар
-    const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
-
-    // Распределим риск пропорционально EV
-    return pairsState.map(pair => {
-      if (!pair.active) return { ...pair, riskAmount: 0 };
-
-      const allocationPercent = (pair.ev / totalEV) * 100;
-      const riskAmount = (allocationPercent / 100) * totalRiskAmount;
-
-      return {
-        ...pair,
-        allocationPercent: parseFloat(allocationPercent.toFixed(1)),
-        riskAmount: parseFloat(riskAmount.toFixed(2))
-      };
-    });
+  
+  // Функция для создания динамичного набора промежуточных целей
+  const generateMilestoneTargets = (startDeposit, targetDeposit) => {
+    const milestones = [];
+    
+    // Добавляем стандартные круглые цели, если они в диапазоне
+    const standardMilestones = [1000, 5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000];
+    for (const milestone of standardMilestones) {
+      if (milestone > startDeposit && milestone <= targetDeposit) {
+        milestones.push(milestone);
+      }
+    }
+    
+    // Добавляем процентные цели от целевого депозита
+    const percentMilestones = [0.25, 0.5, 0.75];
+    for (const percent of percentMilestones) {
+      const value = Math.round(targetDeposit * percent);
+      if (value > startDeposit && !milestones.includes(value)) {
+        milestones.push(value);
+      }
+    }
+    
+    // Если целевой депозит крупный, добавляем дополнительные крупные цели
+    if (targetDeposit > 100000) {
+      const step = targetDeposit > 1000000 ? 500000 : 100000;
+      for (let i = 100000; i < targetDeposit; i += step) {
+        if (i > startDeposit && !milestones.includes(i)) {
+          milestones.push(i);
+        }
+      }
+    }
+    
+    // Всегда добавляем целевой депозит, если он еще не включен
+    if (!milestones.includes(targetDeposit)) {
+      milestones.push(targetDeposit);
+    }
+    
+    // Сортируем и возвращаем уникальные значения
+    return [...new Set(milestones)].sort((a, b) => a - b);
   };
+
+  // Функция для расчета вероятности полной потери депозита
+  const calculateBankruptcyRisk = useCallback((deposit, riskPercent, pairs) => {
+    // Проверка на наличие активных пар
+    const activePairs = pairs.filter(pair => pair.active);
+    if (activePairs.length === 0) return { probability: 0, criticalLosses: 0, timeEstimate: null };
+    
+    // Средневзвешенный винрейт и RR по активным парам
+    const totalEV = activePairs.reduce((sum, pair) => sum + pair.ev, 0);
+    const weightedWinrate = activePairs.reduce((sum, pair) => 
+      sum + (pair.winrate * (pair.ev / totalEV)), 0);
+    const weightedRR = activePairs.reduce((sum, pair) => 
+      sum + (pair.rr * (pair.ev / totalEV)), 0);
+    
+    // Средний процент риска на сделку (снижается по мере роста депозита)
+    const avgRiskPercent = riskPercent;
+    
+    // Вероятность проигрыша в одной сделке
+    const lossRate = (100 - weightedWinrate) / 100;
+    
+    // Расчет количества последовательных убытков, необходимых для слива депозита
+    const criticalLosses = Math.ceil(Math.log(0.1 / deposit) / Math.log(1 - avgRiskPercent/100));
+    
+    // Вероятность такой последовательности убытков
+    const sequenceProbability = Math.pow(lossRate, criticalLosses) * 100;
+    
+    // Общее количество сделок в месяц по всем парам
+    const monthlyTrades = activePairs.reduce((sum, pair) => sum + pair.monthlyTrades, 0);
+    
+    // Ожидаемое количество таких последовательностей в месяц
+    // Используем формулу для ожидаемого числа серий определенной длины
+    const expectedSequencesPerMonth = (monthlyTrades - criticalLosses + 1) * sequenceProbability / 100;
+    
+    // Среднее время до первого появления такой последовательности (в месяцах)
+    // Если вероятность очень мала, указываем null
+    const timeEstimate = expectedSequencesPerMonth > 0 
+      ? Math.ceil(1 / expectedSequencesPerMonth)
+      : null;
+    
+    // Среднемесячное EV с учетом всех факторов для итоговой корректировки
+    const monthlyEV = activePairs.reduce((sum, pair) => 
+      sum + pair.monthlyTrades * pair.riskAmount * (pair.winrate/100 * pair.rr - (1 - pair.winrate/100)), 0);
+    
+    // Корректировка с учетом соотношения риск/вознаграждение и положительного EV
+    // Чем выше EV и RR, тем ниже реальная вероятность слива
+    const evAdjustment = monthlyEV > 0 ? 1 / (1 + monthlyEV / deposit * 10) : 1;
+    
+    // Итоговая скорректированная вероятность банкротства
+    // С минимальным порогом 0.01% и максимальным 99.99%
+    let adjustedProbability = sequenceProbability * evAdjustment;
+    adjustedProbability = Math.min(Math.max(adjustedProbability, 0.01), 99.99);
+    
+    // Дополнительная поправка для малых депозитов (более рискованных)
+    if (deposit < 1000) {
+      adjustedProbability = adjustedProbability * (1 + (1000 - deposit) / 1000);
+    }
+    
+    return {
+      probability: parseFloat(adjustedProbability.toFixed(2)),
+      criticalLosses: criticalLosses,
+      timeEstimate: timeEstimate
+    };
+  }, []);
+  
+  // Состояние для хранения данных о риске слива
+  const [bankruptcyRisk, setBankruptcyRisk] = useState({
+    probability: 0,
+    criticalLosses: 0,
+    timeEstimate: null
+  });
 
   // Расчет ожидаемой прибыли для одной пары
   const calculatePairProfit = (pair, deposit, scenarioMultiplier = 1) => {
@@ -705,8 +813,8 @@ const App = () => {
     if (scenarioType === 'optimistic') scenarioMultiplier = 1.2;
     if (scenarioType === 'pessimistic') scenarioMultiplier = 0.8;
 
-    // Создаем промежуточные цели
-    const milestoneTargets = [1000, 5000, 10000, 25000, 50000, 75000, 100000].filter(t => t > startDeposit && t <= target);
+    // Создаем промежуточные цели с использованием новой функции
+    const milestoneTargets = generateMilestoneTargets(startDeposit, target);
     let milestoneResults = [];
 
     // Отслеживание просадки - улучшенная инициализация
@@ -869,6 +977,11 @@ const App = () => {
         setGrowthChartData(results.monthlyData);
         setPairPerformanceData(results.pairResults);
         setMilestones(results.milestones);
+        
+        // Расчет риска банкротства
+        const riskInfo = calculateBankruptcyRisk(initialDeposit, initialRiskPercent, tradingPairs);
+        setBankruptcyRisk(riskInfo);
+        
         setIsCalculating(false);
       }, 300);
     } else {
@@ -1184,6 +1297,21 @@ const App = () => {
           </div>
           <div className="small-text">
             Макс. просадка: {projectionResults.maxDrawdown || 0}%
+          </div>
+        </div>
+        
+        <div className="dashboard-card red-gradient">
+          <h3>Риск потери депозита</h3>
+          <div className="value">
+            {bankruptcyRisk.probability}%
+          </div>
+          <div className="subtext">
+            Критическая серия: {bankruptcyRisk.criticalLosses} убытков подряд
+          </div>
+          <div className="small-text">
+            {bankruptcyRisk.timeEstimate 
+              ? `Вероятное время до риска: ~${bankruptcyRisk.timeEstimate} мес.` 
+              : 'Низкая вероятность за период'}
           </div>
         </div>
       </div>
@@ -1650,26 +1778,39 @@ const App = () => {
                     </div>
 
                     <div className="stat-card">
-                      <h3 className="stat-title">Статистика проекции</h3>
-                      <div className="stat-content">
-                        <div className="stat-item">
-                          <span>Общее количество сделок:</span>
-                          <span className="item-value">{formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))}</span>
-                        </div>
-                        <div className="stat-item">
-                          <span>Средний месячный доход:</span>
-                          <span className="item-value">{formatCurrency(projectionResults.monthlyData.slice(1).reduce((sum, month) => sum + month.profit, 0) / (projectionResults.monthlyData.length - 1))}</span>
-                        </div>
-                        <div className="stat-item">
-                          <span>Максимальный риск:</span>
-                          <span className="item-value">{formatCurrency(Math.max(...projectionResults.monthlyData.map(m => m.riskAmount)))}</span>
-                        </div>
-                        <div className="stat-item">
-                          <span>Максимальная просадка:</span>
-                          <span className="item-value text-danger">{projectionResults.maxDrawdown}%</span>
-                        </div>
+                    <h3 className="stat-title">Статистика проекции</h3>
+                    <div className="stat-content">
+                      <div className="stat-item">
+                        <span>Общее количество сделок:</span>
+                        <span className="item-value">{formatNumber(projectionResults.monthlyData.reduce((sum, month) => sum + month.trades, 0))}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span>Средний месячный доход:</span>
+                        <span className="item-value">{formatCurrency(projectionResults.monthlyData.slice(1).reduce((sum, month) => sum + month.profit, 0) / (projectionResults.monthlyData.length - 1))}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span>Максимальный риск:</span>
+                        <span className="item-value">{formatCurrency(Math.max(...projectionResults.monthlyData.map(m => m.riskAmount)))}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span>Максимальная просадка:</span>
+                        <span className="item-value text-danger">{projectionResults.maxDrawdown}%</span>
+                      </div>
+                      <div className="stat-item">
+                        <span>Вероятность потери депозита:</span>
+                        <span className={`item-value ${
+                          bankruptcyRisk.probability > 10 ? 'text-danger' : 
+                          bankruptcyRisk.probability > 5 ? 'text-warning' : 'text-success'
+                        }`}>
+                          {bankruptcyRisk.probability}%
+                        </span>
+                      </div>
+                      <div className="stat-item">
+                        <span>Критическая серия SL:</span>
+                        <span className="item-value">{bankruptcyRisk.criticalLosses} убытков</span>
                       </div>
                     </div>
+                  </div>
                   </div>
 
                   <div className="warning-box">
