@@ -1167,6 +1167,65 @@ body, .container {
 }
 
 /* Адаптивные изменения для мобильных устройств */
+/* Стили для кнопки расчета */
+.calculate-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.calculate-button {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  border: none;
+  color: white;
+  padding: 0.9rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 105, 217, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 240px;
+}
+
+.calculate-button:hover {
+  background: linear-gradient(135deg, #40a9ff 0%, #1890ff 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 105, 217, 0.4);
+}
+
+.calculate-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 105, 217, 0.4);
+}
+
+.calculate-button:before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(0);
+  border-radius: 50%;
+  transition: transform 0.6s;
+}
+
+.calculate-button:active:before {
+  transform: scale(1);
+  opacity: 0;
+  transition: transform 0s, opacity 0.6s;
+}
+
+.calculate-button.calculating {
+  background: linear-gradient(135deg, #177ddc 0%, #0b5eb9 100%);
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
 @media (max-width: 768px) {
   .settings-controls {
     top: auto;
@@ -1182,5 +1241,10 @@ body, .container {
   
   .pairs-grid.smaller-pairs {
     grid-template-columns: 1fr;
+  }
+  
+  .calculate-button {
+    width: 100%;
+    padding: 0.8rem 1rem;
   }
 }
