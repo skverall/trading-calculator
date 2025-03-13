@@ -212,13 +212,16 @@ const App = () => {
     const monthlyTrades = activePairs.reduce((sum, pair) => sum + pair.monthlyTrades, 0);
     
     // Ожидаемое количество таких последовательностей в месяц
-    // Используем формулу для ожидаемого числа серий определенной длины
-    const expectedSequencesPerMonth = (monthlyTrades - criticalLosses + 1) * sequenceProbability / 100;
+    // ИСПРАВЛЕНИЕ: формула некорректно рассчитывает вероятность последовательностей
+    // Новая формула учитывает реальную вероятность появления серии убытков в потоке сделок
+    const expectedSequencesPerMonth = monthlyTrades > criticalLosses ? 
+      (monthlyTrades - criticalLosses + 1) * Math.pow(lossRate, criticalLosses) : 
+      Math.pow(lossRate, criticalLosses) / criticalLosses;
     
     // Среднее время до первого появления такой последовательности (в месяцах)
     // Если вероятность очень мала, указываем null
     const timeEstimate = expectedSequencesPerMonth > 0 
-      ? Math.ceil(1 / expectedSequencesPerMonth)
+      ? Math.min(Math.ceil(1 / expectedSequencesPerMonth), 9999999) // Ограничиваем максимальное значение
       : null;
     
     // Среднемесячное EV с учетом всех факторов для итоговой корректировки
@@ -229,9 +232,12 @@ const App = () => {
     // Чем выше EV и RR, тем ниже реальная вероятность слива
     const evAdjustment = monthlyEV > 0 ? 1 / (1 + monthlyEV / deposit * 10) : 1;
     
-    // Итоговая скорректированная вероятность банкротства
-    // С минимальным порогом 0.01% и максимальным 99.99%
-    let adjustedProbability = sequenceProbability * evAdjustment;
+    // ИСПРАВЛЕНИЕ: Итоговая скорректированная вероятность банкротства
+    // Используем вероятность из expectedSequencesPerMonth, которая более реалистична
+    // Применяем коэффициент времени, так как чем больше времени, тем выше вероятность
+    let adjustedProbability = Math.min(expectedSequencesPerMonth * 100, 100) * evAdjustment;
+
+    // Убеждаемся, что вероятность в разумных пределах
     adjustedProbability = Math.min(Math.max(adjustedProbability, 0.01), 99.99);
     
     // Дополнительная поправка для малых депозитов (более рискованных)
@@ -1156,12 +1162,41 @@ const App = () => {
           </div>
           <div className="small-text">
             {bankruptcyRisk.timeEstimate 
-              ? `Вероятное время до риска: ~${bankruptcyRisk.timeEstimate} мес.` 
+              ? `Вероятное время до риска: ${formatTimeEstimate(bankruptcyRisk.timeEstimate)}` 
               : 'Низкая вероятность за период'}
           </div>
         </div>
       </div>
     );
+  };
+
+  // Функция для форматирования оценки времени до риска
+  const formatTimeEstimate = (months) => {
+    if (months >= 12) {
+      const years = (months / 12).toFixed(1);
+      return `~${years} ${formatYearsWord(years)}`;
+    }
+    return `~${months} мес.`;
+  };
+
+  // Функция для правильного склонения слова "лет/год/года"
+  const formatYearsWord = (years) => {
+    const lastDigit = years % 10;
+    const lastTwoDigits = years % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 20) {
+      return 'лет';
+    }
+    
+    if (lastDigit === 1) {
+      return 'год';
+    }
+    
+    if (lastDigit >= 2 && lastDigit <= 4) {
+      return 'года';
+    }
+    
+    return 'лет';
   };
 
   // Рендер графика вклада каждой пары
